@@ -1,0 +1,41 @@
+# =============================================================================
+# Pulse WebQA Agent — Production Dependencies
+# Python 3.12   |   All versions verified compatible with Python 3.12
+# =============================================================================
+
+# ---- Web Framework --------------------------------------------------------
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+h11==0.14.0
+python-multipart==0.0.12
+
+# ---- Pydantic & Settings --------------------------------------------------
+pydantic==2.10.3
+pydantic-settings==2.6.1
+
+# ---- LangChain / RAG ------------------------------------------------------
+# langsmith>=0.1.100 fixes the ForwardRef._evaluate() crash on Python 3.12
+langchain==0.3.9
+langchain-core==0.3.21
+langchain-google-genai==2.0.7
+langchain-text-splitters==0.3.2
+langsmith==0.1.147
+google-generativeai==0.8.3
+
+# ---- MongoDB --------------------------------------------------------------
+motor==3.6.0
+pymongo==4.9.1
+
+# ---- MySQL (async) ---------------------------------------------------------
+sqlalchemy[asyncio]==2.0.36
+aiomysql==0.2.0
+PyMySQL==1.1.1
+
+# ---- Async HTTP / Crawler -------------------------------------------------
+aiohttp==3.11.9
+beautifulsoup4==4.12.3
+lxml==5.3.0
+charset-normalizer==3.4.0
+
+# ---- Utilities ------------------------------------------------------------
+python-dotenv==1.0.1

@@ -1,0 +1,126 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pulse-webqa-agent"
+version = "1.0.0"
+description = "RAG-powered Q&A agent over indexed help documentation"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+keywords = ["rag", "llm", "langchain", "mongodb", "fastapi"]
+dependencies = [
+    "aiohttp==3.9.5",
+    "aiomysql==0.2.0",
+    "beautifulsoup4==4.12.3",
+    "charset-normalizer==3.3.2",
+    "fastapi==0.111.0",
+    "google-generativeai==0.5.4",
+    "h11==0.14.0",
+    "langchain==0.2.1",
+    "langchain-core==0.2.1",
+    "langchain-google-genai==1.0.5",
+    "langchain-text-splitters==0.2.0",
+    "langsmith==0.1.63",
+    "lxml==5.2.2",
+    "motor==3.4.0",
+    "pydantic==2.7.1",
+    "pydantic-settings==2.2.1",
+    "pymongo==4.7.2",
+    "pymysql==1.1.1",
+    "python-dotenv==1.0.1",
+    "python-multipart==0.0.9",
+    "sqlalchemy[asyncio]==2.0.30",
+    "starlette==0.37.2",
+    "uvicorn[standard]==0.29.0",
+    "uvloop==0.19.0 ; sys_platform != 'win32'",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["api*", "crawler*", "ingestion*", "rag*", "monitoring*", "config*", "db*"]
+
+# ============================================================
+# Ruff — linter + formatter
+# ============================================================
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["."]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "S",   # flake8-bandit (security)
+    "ANN", # flake8-annotations (partial)
+]
+ignore = [
+    "ANN101",  # missing type annotation for self
+    "ANN102",  # missing type annotation for cls
+    "ANN401",  # dynamically typed Any
+    "S101",    # use of assert (fine in tests)
+    "S105",    # possible hardcoded password (false positives on env var names)
+    "S106",
+    "B008",    # do not perform function calls in argument defaults (FastAPI pattern)
+    "N818",    # Exception name should end in Error (we use custom names)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "ANN"]
+"scripts/*" = ["ANN", "T201"]  # allow print in scripts
+
+[tool.ruff.lint.isort]
+known-first-party = ["api", "config", "crawler", "db", "ingestion", "monitoring", "rag"]
+
+# ============================================================
+# mypy
+# ============================================================
+[tool.mypy]
+python_version = "3.11"
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+plugins = ["sqlalchemy.ext.mypy.plugin"]
+
+[[tool.mypy.overrides]]
+module = ["motor.*", "pymongo.*", "langchain.*", "langchain_google_genai.*", "google.*"]
+ignore_missing_imports = true
+
+# ============================================================
+# pytest
+# ============================================================
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--tb=short",
+    "--strict-markers",
+    "-q",
+]
+markers = [
+    "integration: marks tests that require live DB connections",
+    "slow: marks tests that are slow",
+]
+
+# ============================================================
+# Coverage
+# ============================================================
+[tool.coverage.run]
+source = ["api", "crawler", "db", "ingestion", "monitoring", "rag", "config"]
+omit = ["tests/*", "scripts/*", "*/migrations/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 70

@@ -1,0 +1,1870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pulse — Help Q&A Agent</title>
+
+<!-- Bootstrap 5 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap Icons -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+
+<style>
+  /* ============================================================
+     DESIGN SYSTEM — Dark industrial with electric amber accent
+     ============================================================ */
+  :root {
+    --bg-base:       #0a0a0f;
+    --bg-surface:    #111118;
+    --bg-raised:     #1a1a24;
+    --bg-hover:      #22222e;
+    --border:        #2a2a38;
+    --border-light:  #3a3a4e;
+    --accent:        #f5a623;
+    --accent-dim:    rgba(245,166,35,0.12);
+    --accent-glow:   rgba(245,166,35,0.25);
+    --text-primary:  #f0f0f8;
+    --text-secondary:#9090a8;
+    --text-muted:    #55556a;
+    --green:         #22d3a0;
+    --green-dim:     rgba(34,211,160,0.12);
+    --red:           #f05a6e;
+    --red-dim:       rgba(240,90,110,0.12);
+    --blue:          #60a5fa;
+    --blue-dim:      rgba(96,165,250,0.12);
+    --radius:        12px;
+    --radius-lg:     18px;
+    --shadow:        0 4px 24px rgba(0,0,0,0.4);
+    --shadow-lg:     0 8px 48px rgba(0,0,0,0.6);
+    --font-display:  'Syne', sans-serif;
+    --font-body:     'DM Sans', sans-serif;
+    --transition:    all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(245,166,35,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app-wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  /* ============================================================
+     HEADER
+     ============================================================ */
+  .site-header {
+    padding: 28px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+  }
+
+  .brand-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #000;
+    font-weight: 800;
+    box-shadow: 0 0 20px var(--accent-glow);
+    flex-shrink: 0;
+  }
+
+  .brand-text {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+  }
+
+  .brand-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 6px 14px;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition: var(--transition);
+  }
+
+  .status-dot.online  { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse-dot 2s infinite; }
+  .status-dot.offline { background: var(--red); }
+  .status-dot.loading { background: var(--accent); animation: pulse-dot 0.8s infinite; }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+
+  /* ============================================================
+     CONFIG PANEL
+     ============================================================ */
+  .config-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    transition: var(--transition);
+  }
+
+  .config-panel:hover { border-color: var(--border-light); }
+
+  .config-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .form-control-dark {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 10px 14px;
+    transition: var(--transition);
+    width: 100%;
+    outline: none;
+  }
+
+  .form-control-dark:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+    background: var(--bg-raised);
+    color: var(--text-primary);
+  }
+
+  .form-control-dark::placeholder { color: var(--text-muted); }
+
+  .form-control-dark.key-input {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ============================================================
+     CHAT AREA
+     ============================================================ */
+  .chat-container {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+
+  .chat-history {
+    min-height: 420px;
+    max-height: 520px;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scroll-behavior: smooth;
+  }
+
+  .chat-history::-webkit-scrollbar { width: 4px; }
+  .chat-history::-webkit-scrollbar-track { background: transparent; }
+  .chat-history::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    gap: 16px;
+    opacity: 0.6;
+  }
+
+  .empty-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: var(--accent);
+  }
+
+  .empty-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+
+  .empty-sub { font-size: 13px; color: var(--text-muted); max-width: 300px; }
+
+  .message {
+    display: flex;
+    gap: 12px;
+    animation: msg-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes msg-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user  { flex-direction: row-reverse; }
+
+  .msg-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .message.user  .msg-avatar { background: var(--accent); color: #000; font-weight: 700; }
+  .message.bot   .msg-avatar { background: var(--bg-raised); border: 1px solid var(--border); color: var(--accent); }
+
+  .msg-body { max-width: 78%; display: flex; flex-direction: column; gap: 6px; }
+  .message.user .msg-body { align-items: flex-end; }
+
+  .msg-bubble {
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    font-size: 14.5px;
+    line-height: 1.65;
+    word-break: break-word;
+  }
+
+  .message.user .msg-bubble {
+    background: var(--accent);
+    color: #111;
+    font-weight: 500;
+    border-bottom-right-radius: 4px;
+  }
+
+  .message.bot .msg-bubble {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-bottom-left-radius: 4px;
+  }
+
+  .msg-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .badge-type {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+
+  .badge-rag              { background: var(--green-dim);  color: var(--green); }
+  .badge-faq_fallback     { background: var(--blue-dim);   color: var(--blue); }
+  .badge-keyword_fallback { background: var(--accent-dim); color: var(--accent); }
+  .badge-no_answer        { background: var(--red-dim);    color: var(--red); }
+
+  .msg-latency {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .msg-score {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: monospace;
+  }
+
+  .sources-toggle {
+    font-size: 11px;
+    color: var(--accent);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .sources-toggle:hover { background: var(--accent-dim); }
+
+  .sources-list {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-top: 4px;
+    display: none;
+  }
+
+  .sources-list.open { display: block; animation: msg-in 0.2s ease; }
+
+  .source-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--accent);
+    text-decoration: none;
+    padding: 3px 0;
+    word-break: break-all;
+  }
+
+  .source-link:hover { color: #fff; }
+
+  .typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 14px 16px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    border-bottom-left-radius: 4px;
+    width: fit-content;
+  }
+
+  .typing-dot {
+    width: 7px;
+    height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: typing 1.2s infinite;
+  }
+
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typing {
+    0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+    40%            { transform: scale(1);   opacity: 1; }
+  }
+
+  /* ============================================================
+     INPUT BAR
+     ============================================================ */
+  .input-bar {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-base);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  .question-input {
+    flex: 1;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14.5px;
+    padding: 11px 16px;
+    resize: none;
+    min-height: 46px;
+    max-height: 140px;
+    line-height: 1.5;
+    transition: var(--transition);
+    outline: none;
+  }
+
+  .question-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+
+  .question-input::placeholder { color: var(--text-muted); }
+
+  .send-btn {
+    width: 46px;
+    height: 46px;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    color: #000;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    flex-shrink: 0;
+  }
+
+  .send-btn:hover:not(:disabled) {
+    background: #ffc04a;
+    transform: scale(1.05);
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
+
+  .send-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .send-btn .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(0,0,0,0.3);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ============================================================
+     METRICS PANEL
+     ============================================================ */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 640px) {
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .metric-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    transition: var(--transition);
+    cursor: default;
+  }
+
+  .metric-card:hover { border-color: var(--border-light); background: var(--bg-raised); }
+
+  .metric-val {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 600;
+  }
+
+  .metric-icon {
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+
+  /* ============================================================
+     SIDEBAR PANELS
+     ============================================================ */
+  .history-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .history-list { max-height: 320px; overflow-y: auto; }
+
+  .history-item {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .history-item:last-child { border-bottom: none; }
+  .history-item:hover      { background: var(--bg-raised); }
+
+  .history-q {
+    font-size: 13px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .history-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .history-time {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* ============================================================
+     INGEST PROGRESS
+     ============================================================ */
+  .ingest-progress-wrap {
+    margin-top: 12px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ingest-progress-wrap.visible { display: flex; animation: msg-in 0.3s ease; }
+
+  .ingest-progress-bar-track {
+    height: 5px;
+    background: var(--bg-hover);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .ingest-progress-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: var(--accent);
+    transition: width 0.4s ease;
+    box-shadow: 0 0 8px var(--accent-glow);
+    width: 0%;
+  }
+
+  .ingest-progress-bar-fill.indeterminate {
+    width: 40%;
+    animation: indeterminate 1.4s ease-in-out infinite;
+  }
+
+  @keyframes indeterminate {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(350%); }
+  }
+
+  .ingest-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+  }
+
+  .ingest-status-text { color: var(--text-secondary); }
+  .ingest-page-count  { color: var(--text-muted); font-family: monospace; }
+
+  .ingest-complete-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--green-dim);
+    border: 1px solid rgba(34,211,160,0.25);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--green);
+    animation: msg-in 0.3s ease;
+  }
+
+  .ingest-error-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--red-dim);
+    border: 1px solid rgba(240,90,110,0.25);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--red);
+    animation: msg-in 0.3s ease;
+  }
+
+  /* ============================================================
+     CODE SNIPPETS PANEL
+     ============================================================ */
+  .code-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 10px 12px 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+  }
+
+  .code-tab {
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-body);
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    transition: var(--transition);
+    border-bottom: 2px solid transparent;
+  }
+
+  .code-tab:hover { color: var(--text-secondary); background: var(--bg-raised); }
+  .code-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .code-snippet-wrap {
+    padding: 0;
+    position: relative;
+  }
+
+  .code-snippet {
+    display: none;
+    margin: 0;
+    padding: 14px 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    background: var(--bg-raised);
+    white-space: pre;
+    overflow-x: auto;
+    max-height: 220px;
+  }
+
+  .code-snippet::-webkit-scrollbar { height: 3px; }
+  .code-snippet::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .code-snippet.active { display: block; }
+
+  .code-kw   { color: #c084fc; }
+  .code-str  { color: #86efac; }
+  .code-num  { color: var(--accent); }
+  .code-cmt  { color: var(--text-muted); font-style: italic; }
+  .code-key  { color: var(--blue); }
+
+  .copy-snippet-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 11px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    z-index: 2;
+  }
+
+  .copy-snippet-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ============================================================
+     TOAST
+     ============================================================ */
+  .toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .toast-msg {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 260px;
+    box-shadow: var(--shadow-lg);
+    animation: toast-in 0.3s ease;
+  }
+
+  .toast-msg.success { border-left: 3px solid var(--green); }
+  .toast-msg.error   { border-left: 3px solid var(--red); }
+  .toast-msg.info    { border-left: 3px solid var(--accent); }
+
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ============================================================
+     QUICK PROMPTS
+     ============================================================ */
+  .quick-prompts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-base);
+  }
+
+  .quick-btn {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: var(--font-body);
+  }
+
+  .quick-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  /* ============================================================
+     SETTINGS MODAL
+     ============================================================ */
+  .modal-dark .modal-content {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text-primary);
+  }
+
+  .modal-dark .modal-header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 24px;
+  }
+
+  .modal-dark .modal-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 18px;
+  }
+
+  .modal-dark .modal-body   { padding: 24px; }
+  .modal-dark .modal-footer { border-top: 1px solid var(--border); padding: 16px 24px; }
+  .modal-dark .btn-close { filter: invert(1); }
+
+  .btn-accent {
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--radius);
+    padding: 10px 20px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    transition: var(--transition);
+    cursor: pointer;
+  }
+
+  .btn-accent:hover { background: #ffc04a; box-shadow: 0 0 16px var(--accent-glow); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 500;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 20px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    transition: var(--transition);
+    cursor: pointer;
+  }
+
+  .btn-ghost:hover { border-color: var(--border-light); color: var(--text-primary); background: var(--bg-raised); }
+
+  /* collapse toggle */
+  .collapse-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 13px;
+    transition: var(--transition);
+    line-height: 1;
+  }
+  .collapse-btn:hover { color: var(--text-primary); background: var(--bg-raised); }
+
+  @media (max-width: 768px) {
+    .site-header { padding: 18px 0 14px; }
+    .chat-history { min-height: 320px; max-height: 420px; padding: 16px; }
+    .brand-text { font-size: 18px; }
+    .header-status span { display: none; }
+  }
+</style>
+</head>
+
+<body>
+<div class="app-wrapper">
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="d-flex align-items-center justify-content-between">
+      <a class="brand" href="#">
+        <div class="brand-icon">P</div>
+        <div>
+          <div class="brand-text">Pulse</div>
+          <div class="brand-sub">Help Q&A Agent</div>
+        </div>
+      </a>
+
+      <div class="d-flex align-items-center gap-2">
+        <div class="header-status" id="statusBadge">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText">Connecting…</span>
+        </div>
+        <button class="btn-ghost d-flex align-items-center gap-2"
+                style="padding:8px 14px; font-size:13px;"
+                data-bs-toggle="modal" data-bs-target="#settingsModal">
+          <i class="bi bi-gear"></i>
+          <span class="d-none d-sm-inline">Settings</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- METRICS ROW -->
+  <div class="metrics-grid" id="metricsGrid">
+    <div class="metric-card">
+      <div class="metric-icon" style="color:var(--accent)"><i class="bi bi-lightning-charge-fill"></i></div>
+      <div class="metric-val" id="mTotalReqs">—</div>
+      <div class="metric-label">Total Requests</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="color:var(--green)"><i class="bi bi-speedometer2"></i></div>
+      <div class="metric-val" id="mAvgLatency">—</div>
+      <div class="metric-label">Avg Latency</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="color:var(--blue)"><i class="bi bi-diagram-3-fill"></i></div>
+      <div class="metric-val" id="mRagRate">—</div>
+      <div class="metric-label">RAG Rate</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="color:var(--red)"><i class="bi bi-shield-check"></i></div>
+      <div class="metric-val" id="mInjections">—</div>
+      <div class="metric-label">Blocked</div>
+    </div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="row g-3">
+
+    <!-- Chat column -->
+    <div class="col-lg-8">
+
+      <!-- Config bar -->
+      <div class="config-panel">
+        <div class="row g-3 align-items-end">
+          <div class="col-sm-8">
+            <div class="config-label"><i class="bi bi-key-fill"></i> API Key</div>
+            <input type="password" class="form-control-dark key-input"
+                   id="apiKeyInput" placeholder="Paste your X-API-Key here…"
+                   autocomplete="off" oninput="refreshCodeSnippets()">
+          </div>
+          <div class="col-sm-4">
+            <div class="config-label"><i class="bi bi-server"></i> Endpoint</div>
+            <input type="text" class="form-control-dark"
+                   id="endpointInput" value="http://localhost:8080"
+                   placeholder="http://localhost:8080" oninput="refreshCodeSnippets()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat window -->
+      <div class="chat-container">
+        <div class="chat-history" id="chatHistory">
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon"><i class="bi bi-chat-dots"></i></div>
+            <div class="empty-title">Ask anything</div>
+            <div class="empty-sub">Questions are answered from indexed help documentation using RAG + Gemini</div>
+          </div>
+        </div>
+
+        <!-- Quick prompts -->
+        <div class="quick-prompts" id="quickPrompts">
+          <button class="quick-btn" onclick="useQuick(this)">What are FAQs?</button>
+          <button class="quick-btn" onclick="useQuick(this)">How do I reset my password?</button>
+          <button class="quick-btn" onclick="useQuick(this)">What are the pricing plans?</button>
+          <button class="quick-btn" onclick="useQuick(this)">How do I contact support?</button>
+        </div>
+
+        <!-- Input bar -->
+        <div class="input-bar">
+          <textarea class="question-input" id="questionInput"
+                    placeholder="Ask a question about the documentation…"
+                    rows="1"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendQuestion()" title="Send (Enter)">
+            <i class="bi bi-arrow-up-short" style="font-size:22px;"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mt-2" style="font-size:12px; color:var(--text-muted); padding:0 4px;">
+        <span>
+          <kbd style="background:var(--bg-raised);border:1px solid var(--border);color:var(--text-secondary);padding:2px 6px;border-radius:4px;font-size:11px;">Enter</kbd> to send &nbsp;·&nbsp;
+          <kbd style="background:var(--bg-raised);border:1px solid var(--border);color:var(--text-secondary);padding:2px 6px;border-radius:4px;font-size:11px;">Shift+Enter</kbd> for newline
+        </span>
+        <span id="charCount" style="font-family:monospace;">0 / 1000</span>
+      </div>
+    </div>
+
+    <!-- Sidebar column -->
+    <div class="col-lg-4">
+
+      <!-- ── INGEST PANEL ─────────────────────────────── -->
+      <div class="history-panel mb-3">
+        <div class="panel-header">
+          <i class="bi bi-cloud-arrow-up" style="color:var(--accent)"></i>
+          Index a Website
+        </div>
+        <div style="padding:16px;">
+          <div class="config-label"><i class="bi bi-link-45deg"></i> Target URL</div>
+          <input type="text" class="form-control-dark mb-3" id="ingestUrl"
+                 placeholder="https://docs.example.com">
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <div class="config-label">Max Depth</div>
+              <input type="number" class="form-control-dark" id="ingestDepth" value="2" min="1" max="5">
+            </div>
+            <div class="col-6">
+              <div class="config-label">Max Pages</div>
+              <input type="number" class="form-control-dark" id="ingestPages" value="50" min="1" max="500">
+            </div>
+          </div>
+
+          <button class="btn-accent w-100 d-flex align-items-center justify-content-center gap-2"
+                  id="ingestBtn" onclick="triggerIngest()">
+            <i class="bi bi-play-fill"></i> Start Crawl
+          </button>
+
+          <!-- Live progress (shown during + after crawl) -->
+          <div class="ingest-progress-wrap" id="ingestProgressWrap">
+            <div class="ingest-status-row">
+              <span class="ingest-status-text" id="ingestStatusText">Queuing job…</span>
+              <span class="ingest-page-count" id="ingestPageCount"></span>
+            </div>
+            <div class="ingest-progress-bar-track">
+              <div class="ingest-progress-bar-fill indeterminate" id="ingestProgressFill"></div>
+            </div>
+          </div>
+
+          <!-- Completion / error banners -->
+          <div id="ingestCompleteBanner" style="display:none; margin-top:10px;"></div>
+        </div>
+      </div>
+
+      <!-- ── SESSION HISTORY ─────────────────────────── -->
+      <div class="history-panel mb-3">
+        <div class="panel-header d-flex justify-content-between align-items-center w-100">
+          <span><i class="bi bi-clock-history" style="color:var(--accent)"></i> &nbsp;Session History</span>
+          <div class="d-flex align-items-center gap-1">
+            <button onclick="clearHistory()" style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;padding:2px 5px;" title="Clear history">
+              <i class="bi bi-trash3"></i>
+            </button>
+            <button class="collapse-btn" id="historyCollapseBtn" onclick="toggleHistoryPanel()" title="Toggle history">
+              <i class="bi bi-chevron-up" id="historyChevron"></i>
+            </button>
+          </div>
+        </div>
+        <div id="historyCollapsible">
+          <div class="history-list" id="historyList">
+            <div style="padding:24px 18px; text-align:center; color:var(--text-muted); font-size:13px;">
+              No questions yet
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── API CODE SNIPPETS ───────────────────────── -->
+      <div class="history-panel">
+        <div class="panel-header">
+          <i class="bi bi-code-slash" style="color:var(--accent)"></i>
+          Use in Code
+        </div>
+
+        <div class="code-tabs">
+          <button class="code-tab active" onclick="switchTab('curl')">cURL</button>
+          <button class="code-tab" onclick="switchTab('js')">JavaScript</button>
+          <button class="code-tab" onclick="switchTab('python')">Python</button>
+        </div>
+
+        <div class="code-snippet-wrap">
+          <button class="copy-snippet-btn" onclick="copyActiveSnippet()" title="Copy to clipboard">
+            <i class="bi bi-copy"></i> Copy
+          </button>
+
+          <!-- cURL -->
+          <pre class="code-snippet active" id="snippet-curl"></pre>
+          <!-- JS -->
+          <pre class="code-snippet" id="snippet-js"></pre>
+          <!-- Python -->
+          <pre class="code-snippet" id="snippet-python"></pre>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div style="height:40px;"></div>
+
+</div><!-- /app-wrapper -->
+
+<!-- SETTINGS MODAL -->
+<div class="modal fade modal-dark" id="settingsModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-gear-fill me-2" style="color:var(--accent)"></i>Settings</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="config-label"><i class="bi bi-chat-left-dots"></i> Session ID (optional)</div>
+        <input type="text" class="form-control-dark mb-3" id="sessionIdInput"
+               placeholder="e.g. user-123" value="">
+
+        <div class="config-label"><i class="bi bi-shield-check"></i> Confidence Threshold display</div>
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <input type="range" id="thresholdDisplay" min="0" max="1" step="0.01" value="0.72"
+                 style="flex:1; accent-color:var(--accent);">
+          <span id="thresholdVal" style="font-family:monospace; font-size:13px; color:var(--accent); min-width:36px;">0.72</span>
+        </div>
+
+        <div class="config-label"><i class="bi bi-arrow-clockwise"></i> Auto-refresh Metrics</div>
+        <div class="d-flex align-items-center gap-2">
+          <input type="checkbox" id="autoRefresh" style="accent-color:var(--accent); width:16px;height:16px;" checked>
+          <label for="autoRefresh" style="font-size:14px; color:var(--text-secondary); cursor:pointer;">
+            Refresh metrics every 30 seconds
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer gap-2">
+        <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn-accent" data-bs-dismiss="modal" onclick="saveSettings()">Save Settings</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+  messages: [],
+  sessionHistory: [],
+  isLoading: false,
+  metricsInterval: null,
+  activeTab: 'curl',
+  historyOpen: true,
+  currentJobId: null,
+  pollInterval: null,
+  poll404Count: 0,
+  pollUsingMetrics: false,
+  pollBaselineDocs: null,
+  pollStableCount: 0,
+  pollLastDocs: undefined,
+  pollTicks: 0,
+};
+
+const $ = id => document.getElementById(id);
+
+const chatHistory   = $('chatHistory');
+const questionInput = $('questionInput');
+const sendBtn       = $('sendBtn');
+const emptyState    = $('emptyState');
+const apiKeyInput   = $('apiKeyInput');
+const endpointInput = $('endpointInput');
+
+/* ============================================================
+   INIT
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = JSON.parse(localStorage.getItem('pulse_settings') || '{}');
+  if (saved.apiKey)    apiKeyInput.value   = saved.apiKey;
+  if (saved.endpoint)  endpointInput.value = saved.endpoint;
+  if (saved.sessionId) $('sessionIdInput').value = saved.sessionId;
+  if (saved.historyOpen === false) {
+    state.historyOpen = false;
+    applyHistoryCollapse(false);
+  }
+
+  checkHealth();
+  fetchMetrics();
+  refreshCodeSnippets();
+
+  state.metricsInterval = setInterval(() => {
+    if ($('autoRefresh').checked) { checkHealth(); fetchMetrics(); }
+  }, 30000);
+
+  questionInput.addEventListener('input', () => {
+    questionInput.style.height = 'auto';
+    questionInput.style.height = Math.min(questionInput.scrollHeight, 140) + 'px';
+    $('charCount').textContent = `${questionInput.value.length} / 1000`;
+  });
+
+  questionInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!state.isLoading) sendQuestion();
+    }
+  });
+
+  $('thresholdDisplay').addEventListener('input', e => {
+    $('thresholdVal').textContent = parseFloat(e.target.value).toFixed(2);
+  });
+});
+
+/* ============================================================
+   HEALTH CHECK
+   ============================================================ */
+async function checkHealth() {
+  const dot  = $('statusDot');
+  const text = $('statusText');
+  const base = endpointInput.value.trim() || 'http://localhost:8080';
+  dot.className    = 'status-dot loading';
+  text.textContent = 'Checking…';
+  try {
+    const res  = await fetch(`${base}/api/v1/health`, { signal: AbortSignal.timeout(5000) });
+    const data = await res.json();
+    dot.className    = data.status === 'healthy' ? 'status-dot online' : 'status-dot loading';
+    text.textContent = data.status === 'healthy' ? 'Online' : 'Degraded';
+  } catch {
+    dot.className    = 'status-dot offline';
+    text.textContent = 'Offline';
+  }
+}
+
+/* ============================================================
+   METRICS
+   ============================================================ */
+async function fetchMetrics() {
+  const base = endpointInput.value.trim() || 'http://localhost:8080';
+  try {
+    const res  = await fetch(`${base}/api/v1/metrics`, { signal: AbortSignal.timeout(5000) });
+    const data = await res.json();
+    $('mTotalReqs').textContent  = data.requests_total ?? '0';
+    $('mAvgLatency').textContent = data.avg_latency_ms ? `${Math.round(data.avg_latency_ms)}ms` : '—';
+    const rag = data.response_types?.rag ?? 0;
+    const tot = data.requests_total ?? 0;
+    $('mRagRate').textContent     = tot > 0 ? `${Math.round((rag/tot)*100)}%` : '—';
+    $('mInjections').textContent  = data.injection_attempts_total ?? '0';
+  } catch { /* silently fail */ }
+}
+
+/* ============================================================
+   SEND QUESTION
+   ============================================================ */
+async function sendQuestion() {
+  const question = questionInput.value.trim();
+  if (!question) return;
+
+  const apiKey  = apiKeyInput.value.trim();
+  const base    = endpointInput.value.trim() || 'http://localhost:8080';
+  const session = $('sessionIdInput').value.trim() || undefined;
+
+  if (!apiKey) {
+    showToast('Paste your API key in the config bar above', 'error');
+    apiKeyInput.focus();
+    return;
+  }
+
+  $('quickPrompts').style.display = 'none';
+  if (emptyState) emptyState.remove();
+
+  appendMessage('user', question);
+  questionInput.value = '';
+  questionInput.style.height = 'auto';
+  $('charCount').textContent = '0 / 1000';
+
+  const typingId = appendTyping();
+  setLoading(true);
+
+  try {
+    const res = await fetch(`${base}/api/v1/ask`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': apiKey,
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ question, session_id: session }),
+    });
+    removeTyping(typingId);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      appendMessage('bot', `⚠️ ${err.detail || `HTTP ${res.status}`}`, null);
+      showToast(err.detail || `HTTP ${res.status}`, 'error');
+    } else {
+      const data = await res.json();
+      appendMessage('bot', data.answer, data);
+      addToHistory(question, data);
+      fetchMetrics();
+    }
+  } catch {
+    removeTyping(typingId);
+    appendMessage('bot', '⚠️ Could not reach the API. Check the endpoint and ensure the server is running.', null);
+    showToast('Connection failed', 'error');
+  }
+
+  setLoading(false);
+}
+
+/* ============================================================
+   MESSAGE RENDERING
+   ============================================================ */
+function appendMessage(role, text, meta) {
+  const div    = document.createElement('div');
+  div.className = `message ${role}`;
+
+  const avatar  = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.innerHTML = role === 'user' ? '<i class="bi bi-person-fill"></i>' : '<i class="bi bi-cpu-fill"></i>';
+
+  const body = document.createElement('div');
+  body.className = 'msg-body';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.textContent = text;
+  body.appendChild(bubble);
+
+  if (role === 'bot' && meta) {
+    const metaRow = document.createElement('div');
+    metaRow.className = 'msg-meta';
+
+    const badge = document.createElement('span');
+    badge.className = `badge-type badge-${meta.response_type}`;
+    badge.textContent = meta.response_type.replace('_', ' ');
+    metaRow.appendChild(badge);
+
+    if (meta.latency_ms != null) {
+      const lat = document.createElement('span');
+      lat.className = 'msg-latency';
+      lat.innerHTML = `<i class="bi bi-stopwatch"></i> ${meta.latency_ms}ms`;
+      metaRow.appendChild(lat);
+    }
+
+    if (meta.confidence_score != null) {
+      const score = document.createElement('span');
+      score.className = 'msg-score';
+      score.textContent = `score: ${meta.confidence_score.toFixed(3)}`;
+      metaRow.appendChild(score);
+    }
+
+    if (meta.sources && meta.sources.length > 0) {
+      const togBtn = document.createElement('button');
+      togBtn.className = 'sources-toggle';
+      togBtn.innerHTML = `<i class="bi bi-link-45deg"></i> ${meta.sources.length} source${meta.sources.length > 1 ? 's' : ''}`;
+
+      const sourcesList = document.createElement('div');
+      sourcesList.className = 'sources-list';
+      meta.sources.forEach(s => {
+        const a = document.createElement('a');
+        a.className = 'source-link';
+        a.href = s.url; a.target = '_blank'; a.rel = 'noopener';
+        a.innerHTML = `<i class="bi bi-box-arrow-up-right"></i> ${s.url}`;
+        sourcesList.appendChild(a);
+      });
+
+      togBtn.onclick = () => {
+        const isOpen = sourcesList.classList.contains('open');
+        sourcesList.classList.toggle('open', !isOpen);
+        togBtn.innerHTML = `<i class="bi bi-link-45deg"></i> ${isOpen ? `${meta.sources.length} source${meta.sources.length > 1 ? 's' : ''}` : 'hide sources'}`;
+      };
+
+      metaRow.appendChild(togBtn);
+      body.appendChild(metaRow);
+      body.appendChild(sourcesList);
+    } else {
+      body.appendChild(metaRow);
+    }
+  }
+
+  div.appendChild(avatar);
+  div.appendChild(body);
+  chatHistory.appendChild(div);
+  chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+/* ============================================================
+   TYPING INDICATOR
+   ============================================================ */
+let typingCounter = 0;
+function appendTyping() {
+  const id  = `typing-${++typingCounter}`;
+  const div = document.createElement('div');
+  div.className = 'message bot';
+  div.id = id;
+  div.innerHTML = `
+    <div class="msg-avatar"><i class="bi bi-cpu-fill"></i></div>
+    <div class="msg-body">
+      <div class="typing-indicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    </div>`;
+  chatHistory.appendChild(div);
+  chatHistory.scrollTop = chatHistory.scrollHeight;
+  return id;
+}
+function removeTyping(id) { const el = $(id); if (el) el.remove(); }
+
+/* ============================================================
+   SESSION HISTORY + COLLAPSE TOGGLE
+   ============================================================ */
+function addToHistory(question, data) {
+  state.sessionHistory.unshift({ question, data, ts: new Date() });
+  renderHistory();
+  // Auto-expand if collapsed
+  if (!state.historyOpen) { state.historyOpen = true; applyHistoryCollapse(true); }
+}
+
+function renderHistory() {
+  const list = $('historyList');
+  if (state.sessionHistory.length === 0) {
+    list.innerHTML = `<div style="padding:24px 18px;text-align:center;color:var(--text-muted);font-size:13px;">No questions yet</div>`;
+    return;
+  }
+  list.innerHTML = state.sessionHistory.slice(0, 20).map((item, i) => `
+    <div class="history-item" onclick="reaskQuestion(${i})">
+      <div class="history-q">${escHtml(item.question)}</div>
+      <div class="history-meta">
+        <span class="badge-type badge-${item.data.response_type}" style="font-size:10px;">${item.data.response_type.replace('_',' ')}</span>
+        <span class="history-time">${item.ts.toLocaleTimeString()}</span>
+      </div>
+    </div>`).join('');
+}
+
+function reaskQuestion(i) {
+  const item = state.sessionHistory[i];
+  if (item) { questionInput.value = item.question; questionInput.dispatchEvent(new Event('input')); questionInput.focus(); }
+}
+
+function clearHistory() {
+  state.sessionHistory = [];
+  renderHistory();
+  showToast('Session history cleared', 'info');
+}
+
+function toggleHistoryPanel() {
+  state.historyOpen = !state.historyOpen;
+  applyHistoryCollapse(state.historyOpen);
+  // persist
+  const saved = JSON.parse(localStorage.getItem('pulse_settings') || '{}');
+  saved.historyOpen = state.historyOpen;
+  localStorage.setItem('pulse_settings', JSON.stringify(saved));
+}
+
+function applyHistoryCollapse(open) {
+  const collapsible = $('historyCollapsible');
+  const chevron     = $('historyChevron');
+  if (open) {
+    collapsible.style.display = '';
+    chevron.className = 'bi bi-chevron-up';
+  } else {
+    collapsible.style.display = 'none';
+    chevron.className = 'bi bi-chevron-down';
+  }
+}
+
+/* ============================================================
+   INGEST — with live polling
+   ============================================================ */
+async function triggerIngest() {
+  const url    = $('ingestUrl').value.trim();
+  const depth  = parseInt($('ingestDepth').value) || 2;
+  const pages  = parseInt($('ingestPages').value) || 50;
+  const apiKey = apiKeyInput.value.trim();
+  const base   = endpointInput.value.trim() || 'http://localhost:8080';
+
+  if (!url)    { showToast('Enter a target URL to crawl', 'error'); return; }
+  if (!apiKey) { showToast('API key required', 'error'); return; }
+
+  const btn    = $('ingestBtn');
+  const wrap   = $('ingestProgressWrap');
+  const banner = $('ingestCompleteBanner');
+  const fill   = $('ingestProgressFill');
+  const stText = $('ingestStatusText');
+  const pgCnt  = $('ingestPageCount');
+
+  // Reset UI
+  banner.style.display = 'none';
+  banner.innerHTML     = '';
+  wrap.classList.add('visible');
+  fill.className       = 'ingest-progress-bar-fill indeterminate';
+  stText.textContent   = 'Queuing job…';
+  pgCnt.textContent    = '';
+  btn.disabled         = true;
+  btn.innerHTML        = `<span style="width:14px;height:14px;border:2px solid rgba(0,0,0,0.3);border-top-color:#000;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;"></span> Starting…`;
+
+  // Reset poll state for new crawl
+  if (state.pollInterval) { clearInterval(state.pollInterval); state.pollInterval = null; }
+  state.poll404Count = 0; state.pollUsingMetrics = false;
+  state.pollBaselineDocs = null; state.pollStableCount = 0;
+  state.pollLastDocs = undefined; state.pollTicks = 0;
+
+  try {
+    const res  = await fetch(`${base}/api/v1/ingest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+      body: JSON.stringify({ target_url: url, max_depth: depth, max_pages: pages }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showIngestError(data.detail || 'Ingest failed');
+      resetIngestBtn();
+      return;
+    }
+
+    state.currentJobId = data.job_id;
+    stText.textContent = `Job ${data.job_id?.slice(0,8)}… queued`;
+    showToast('Crawl job started!', 'success');
+    btn.innerHTML = `<span style="width:14px;height:14px;border:2px solid rgba(0,0,0,0.3);border-top-color:#000;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;"></span> Crawling…`;
+
+    // Start polling — will auto-detect whether job-status endpoint exists
+    state.poll404Count = 0;
+    state.pollUsingMetrics = false;
+    state.pollBaselineDocs = null;
+    state.pollStableCount  = 0;
+    state.pollInterval = setInterval(
+      () => pollJobStatus(base, apiKey, data.job_id, pages),
+      3000
+    );
+
+  } catch {
+    showIngestError('Could not reach the API');
+    resetIngestBtn();
+  }
+}
+
+// ── Strategy A: job-status endpoint (/api/v1/ingest/{id})
+// ── Strategy B: metrics doc-count watch (fallback when A returns 404 twice)
+async function pollJobStatus(base, apiKey, jobId, maxPages) {
+  // ── Strategy B: metrics-based ────────────────────────────────────────────
+  if (state.pollUsingMetrics) {
+    await pollViaMetrics(base, apiKey, maxPages);
+    return;
+  }
+
+  // ── Strategy A: job endpoint ──────────────────────────────────────────────
+  try {
+    const res = await fetch(`${base}/api/v1/ingest/${jobId}`, {
+      headers: { 'X-API-Key': apiKey },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    // Endpoint doesn't exist — switch to metrics fallback after 2 misses
+    if (res.status === 404) {
+      state.poll404Count = (state.poll404Count || 0) + 1;
+      if (state.poll404Count >= 2) {
+        state.pollUsingMetrics = true;
+        $('ingestStatusText').textContent = 'Crawling… (watching metrics)';
+        // Snapshot current doc count so we can detect growth
+        try {
+          const mr   = await fetch(`${base}/api/v1/metrics`, { signal: AbortSignal.timeout(4000) });
+          const md   = await mr.json();
+          state.pollBaselineDocs = md.documents_total ?? 0;
+        } catch { state.pollBaselineDocs = 0; }
+      }
+      return;
+    }
+
+    const data = await res.json();
+    const fill   = $('ingestProgressFill');
+    const stText = $('ingestStatusText');
+    const pgCnt  = $('ingestPageCount');
+
+    const crawled = data.pages_crawled ?? 0;
+    const total   = data.pages_total   ?? maxPages;
+    const pct     = total > 0 ? Math.min((crawled / total) * 100, 100) : 0;
+
+    if (crawled > 0 && fill.classList.contains('indeterminate')) {
+      fill.classList.remove('indeterminate');
+    }
+    if (!fill.classList.contains('indeterminate')) fill.style.width = `${pct}%`;
+    pgCnt.textContent = crawled > 0 ? `${crawled} / ${total} pages` : '';
+
+    if (data.status === 'running' || data.status === 'queued') {
+      stText.textContent = data.status === 'running' ? 'Crawling pages…' : 'Queued…';
+    } else if (data.status === 'completed' || data.status === 'done') {
+      finishIngestSuccess(crawled || maxPages);
+    } else if (data.status === 'failed' || data.status === 'error') {
+      clearInterval(state.pollInterval); state.pollInterval = null;
+      showIngestError(data.error || 'Crawl failed');
+      resetIngestBtn();
+    }
+  } catch {
+    // transient network error — keep polling
+  }
+}
+
+// Strategy B implementation: watch documents_total in /api/v1/metrics
+// Consider done when count has stopped growing for 2 consecutive checks
+async function pollViaMetrics(base, apiKey, maxPages) {
+  try {
+    const res  = await fetch(`${base}/api/v1/metrics`, { signal: AbortSignal.timeout(5000) });
+    const data = await res.json();
+
+    const fill   = $('ingestProgressFill');
+    const stText = $('ingestStatusText');
+    const pgCnt  = $('ingestPageCount');
+
+    const docs     = data.documents_total ?? 0;
+    const baseline = state.pollBaselineDocs ?? 0;
+    const newDocs  = Math.max(0, docs - baseline);
+
+    // Show indeterminate until docs actually start arriving
+    if (newDocs > 0 && fill.classList.contains('indeterminate')) {
+      fill.classList.remove('indeterminate');
+    }
+
+    if (newDocs > 0) {
+      const pct = Math.min((newDocs / maxPages) * 100, 95); // cap at 95% until stable
+      if (!fill.classList.contains('indeterminate')) fill.style.width = `${pct}%`;
+      pgCnt.textContent  = `+${newDocs} docs indexed`;
+      stText.textContent = 'Indexing documents…';
+    }
+
+    // Detect plateau: doc count didn't change since last check
+    if (state.pollLastDocs !== undefined && docs === state.pollLastDocs && newDocs > 0) {
+      state.pollStableCount = (state.pollStableCount || 0) + 1;
+      if (state.pollStableCount >= 2) {
+        finishIngestSuccess(newDocs);
+        return;
+      }
+    } else {
+      state.pollStableCount = 0;
+    }
+    state.pollLastDocs = docs;
+
+    // Hard timeout: after ~3 min stop polling regardless
+    state.pollTicks = (state.pollTicks || 0) + 1;
+    if (state.pollTicks > 60) {
+      finishIngestSuccess(newDocs || maxPages);
+    }
+  } catch {
+    // transient — keep going
+  }
+}
+
+function finishIngestSuccess(pageCount) {
+  clearInterval(state.pollInterval); state.pollInterval = null;
+  const fill = $('ingestProgressFill');
+  fill.classList.remove('indeterminate');
+  fill.style.width = '100%';
+  $('ingestStatusText').textContent = 'Finished!';
+  $('ingestPageCount').textContent  = `${pageCount} pages indexed`;
+  showIngestComplete(pageCount, {});
+  resetIngestBtn();
+  fetchMetrics();
+  showToast(`Crawl complete — ${pageCount} docs indexed`, 'success');
+}
+
+function showIngestComplete(pages, data) {
+  const banner = $('ingestCompleteBanner');
+  banner.style.display = 'block';
+  banner.innerHTML = `
+    <div class="ingest-complete-banner">
+      <i class="bi bi-check-circle-fill" style="font-size:16px;flex-shrink:0;"></i>
+      <div>
+        <div style="font-weight:600;">Crawl complete</div>
+        <div style="color:rgba(34,211,160,0.7);margin-top:1px;">${pages} page${pages !== 1 ? 's' : ''} indexed and ready to query</div>
+      </div>
+    </div>`;
+}
+
+function showIngestError(msg) {
+  const wrap   = $('ingestProgressWrap');
+  const banner = $('ingestCompleteBanner');
+  wrap.classList.remove('visible');
+  banner.style.display = 'block';
+  banner.innerHTML = `
+    <div class="ingest-error-banner">
+      <i class="bi bi-exclamation-circle-fill" style="font-size:16px;flex-shrink:0;"></i>
+      <div>
+        <div style="font-weight:600;">Crawl failed</div>
+        <div style="color:rgba(240,90,110,0.7);margin-top:1px;">${escHtml(msg)}</div>
+      </div>
+    </div>`;
+  showToast(msg, 'error');
+}
+
+function resetIngestBtn() {
+  const btn = $('ingestBtn');
+  btn.disabled = false;
+  btn.innerHTML = `<i class="bi bi-play-fill"></i> Start Crawl`;
+}
+
+/* ============================================================
+   QUICK PROMPTS
+   ============================================================ */
+function useQuick(btn) {
+  questionInput.value = btn.textContent;
+  questionInput.dispatchEvent(new Event('input'));
+  questionInput.focus();
+}
+
+/* ============================================================
+   CODE SNIPPETS
+   ============================================================ */
+function switchTab(tab) {
+  state.activeTab = tab;
+  document.querySelectorAll('.code-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.code-snippet').forEach(s => s.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  $(`snippet-${tab}`).classList.add('active');
+}
+
+function refreshCodeSnippets() {
+  const key  = apiKeyInput.value.trim() || 'YOUR_API_KEY';
+  const base = (endpointInput.value.trim() || 'http://localhost:8080');
+  const displayKey = key === 'YOUR_API_KEY' ? key : key.slice(0,6) + '••••' + key.slice(-4);
+
+  $('snippet-curl').innerHTML = syntaxHL('curl', `curl -X POST ${base}/api/v1/ask \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: ${displayKey}" \\
+  -d '{
+    "question": "How do I reset my password?",
+    "session_id": "user-123"
+  }'`);
+
+  $('snippet-js').innerHTML = syntaxHL('js', `const response = await fetch(
+  "${base}/api/v1/ask",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": "${displayKey}",
+    },
+    body: JSON.stringify({
+      question: "How do I reset my password?",
+      session_id: "user-123",
+    }),
+  }
+);
+const data = await response.json();
+console.log(data.answer);`);
+
+  $('snippet-python').innerHTML = syntaxHL('python', `import requests
+
+resp = requests.post(
+    "${base}/api/v1/ask",
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": "${displayKey}",
+    },
+    json={
+        "question": "How do I reset my password?",
+        "session_id": "user-123",
+    },
+)
+print(resp.json()["answer"])`);
+}
+
+function syntaxHL(lang, code) {
+  // Simple token colouring — escape first
+  let s = code
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  if (lang === 'curl') {
+    s = s
+      .replace(/(curl|-X|-H|-d)/g, '<span class="code-kw">$1</span>')
+      .replace(/("(?:[^"\\]|\\.)*")/g, '<span class="code-str">$1</span>');
+  } else if (lang === 'js') {
+    s = s
+      .replace(/\b(const|await|fetch|method|headers|body|JSON\.stringify|console\.log)\b/g, '<span class="code-kw">$1</span>')
+      .replace(/("(?:[^"\\]|\\.)*")/g, '<span class="code-str">$1</span>');
+  } else if (lang === 'python') {
+    s = s
+      .replace(/\b(import|requests|resp|json|print)\b/g, '<span class="code-kw">$1</span>')
+      .replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span class="code-str">$1</span>');
+  }
+  return s;
+}
+
+async function copyActiveSnippet() {
+  const el   = $(`snippet-${state.activeTab}`);
+  const text = el.innerText;
+  // Replace masked key with real key for copy
+  const key  = apiKeyInput.value.trim();
+  const real = key ? text.replace(/[a-z0-9]{6}••••[a-z0-9]{4}/i, key) : text;
+  try {
+    await navigator.clipboard.writeText(real);
+    showToast('Copied to clipboard', 'success');
+  } catch {
+    showToast('Copy failed — try selecting manually', 'error');
+  }
+}
+
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+function saveSettings() {
+  localStorage.setItem('pulse_settings', JSON.stringify({
+    apiKey:      apiKeyInput.value,
+    endpoint:    endpointInput.value,
+    sessionId:   $('sessionIdInput').value,
+    historyOpen: state.historyOpen,
+  }));
+  showToast('Settings saved', 'success');
+  checkHealth();
+  refreshCodeSnippets();
+}
+
+/* ============================================================
+   LOADING STATE
+   ============================================================ */
+function setLoading(val) {
+  state.isLoading  = val;
+  sendBtn.disabled = val;
+  questionInput.disabled = val;
+  sendBtn.innerHTML = val
+    ? `<div class="spinner"></div>`
+    : `<i class="bi bi-arrow-up-short" style="font-size:22px;"></i>`;
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+function showToast(msg, type = 'info') {
+  const icons  = { success:'bi-check-circle-fill', error:'bi-exclamation-circle-fill', info:'bi-info-circle-fill' };
+  const colors = { success:'var(--green)', error:'var(--red)', info:'var(--accent)' };
+  const toast  = document.createElement('div');
+  toast.className = `toast-msg ${type}`;
+  toast.innerHTML = `<i class="bi ${icons[type]}" style="color:${colors[type]};font-size:16px;"></i> ${escHtml(msg)}`;
+  $('toastContainer').appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

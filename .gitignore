@@ -1,0 +1,89 @@
+# =============================================================================
+# Pulse WebQA Agent — .gitignore
+# =============================================================================
+
+# ---- Secrets (NEVER commit) -----------------------------------------------
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ---- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+*.whl
+
+# ---- Virtual environments -------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ---- uv -------------------------------------------------------------------
+.uv/
+uv.lock          # uncomment if you prefer not to commit the lockfile
+
+# ---- Testing / coverage ---------------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+test-results/
+
+# ---- Data (never commit local crawl data or logs) -------------------------
+data/checkpoints/
+data/audit_logs/
+data/chroma_db/
+*.jsonl
+*.jsonl.gz
+
+# ---- IDEs -----------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Docker ---------------------------------------------------------------
+docker-compose.override.yml
+
+# ---- Logs -----------------------------------------------------------------
+*.log
+logs/
+
+# ---- Jupyter --------------------------------------------------------------
+.ipynb_checkpoints/
+*.ipynb
+
+# ---- OS -------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# ---- Misc -----------------------------------------------------------------
+*.bak
+*.tmp
+*.orig
+.cache/
