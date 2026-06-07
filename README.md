@@ -9,125 +9,146 @@
 
 ---
 
-## Architecture
+flowchart TD
+    %% Custom Styling
+    classDef pipeline fill:#f9f9f9,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef component fill:#fff,stroke:#333,stroke-width:1px;
+    classDef dataStore fill:#edf2f7,stroke:#4a5568,stroke-width:2px;
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           INGESTION PIPELINE                            │
-│                                                                         │
-│  Target URL                                                             │
-│      │                                                                  │
-│      ▼                                                                  │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │  AsyncCrawler (aiohttp + BS4)                                   │   │
-│  │  • Semaphore-bounded concurrency (10 parallel)                  │   │
-│  │  • Exponential backoff retry (3 attempts, full jitter)          │   │
-│  │  • robots.txt compliance                                        │   │
-│  │  • BFS with depth & page limits                                 │   │
-│  │  • JSON checkpoint every 25 pages (crash recovery)             │   │
-│  └────────────────────────┬────────────────────────────────────────┘   │
-│                           │ CrawledPage                                 │
-│                           ▼                                             │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │  PageChunker (RecursiveCharacterTextSplitter)                    │  │
-│  │  chunk_size=800, overlap=120, SHA-256 deterministic IDs          │  │
-│  └────────────────────────┬─────────────────────────────────────────┘  │
-│                           │ DocumentChunk[]                             │
-│                           ▼                                             │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │  ChunkEmbedder (GoogleGenerativeAIEmbeddings, 768-dim)           │  │
-│  │  Batch size=50, retry with backoff                               │  │
-│  └────────────────────────┬─────────────────────────────────────────┘  │
-│                           │ (chunk, embedding)[]                        │
-│                           ▼                                             │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │  MongoDB Atlas (Motor async)                                     │  │
-│  │  bulk_write upsert keyed on chunk_id                             │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-│                                                                         │
-│  MySQL crawl_jobs: PENDING → RUNNING → COMPLETED                       │
-└─────────────────────────────────────────────────────────────────────────┘
+    %% ==========================================
+    %% INGESTION PIPELINE
+    %% ==========================================
+    subgraph INGESTION ["INGESTION PIPELINE"]
+        URL[Target URL] 
+        
+        Crawler["AsyncCrawler (aiohttp + BS4)
+        • Semaphore-bounded concurrency (10 parallel)
+        • Exponential backoff retry (3 attempts, full jitter)
+        • robots.txt compliance
+        • BFS with depth & page limits
+        • JSON checkpoint every 25 pages"]
+        
+        Chunker["PageChunker (RecursiveCharacterTextSplitter)
+        chunk_size=800, overlap=120, SHA-256 deterministic IDs"]
+        
+        Embedder["ChunkEmbedder (GoogleGenerativeAIEmbeddings, 768-dim)
+        Batch size=50, retry with backoff"]
+        
+        MongoIngest[MongoDB Atlas (Motor async)
+        bulk_write upsert keyed on chunk_id]
 
-┌─────────────────────────────────────────────────────────────────────────┐
-│                            QUERY PIPELINE                               │
-│                                                                         │
-│  POST /api/v1/ask  {"question": "..."}                                  │
-│      │                                                                  │
-│      ▼                                                                  │
-│  ┌────────────────────────────────────────────────────────────────┐    │
-│  │  Guardrails                                                    │    │
-│  │  • Sanitise: null-byte removal, HTML escape, truncation        │    │
-│  │  • Injection detection: 16 regex patterns                      │    │
-│  │  • Block immediately if injection detected                     │    │
-│  └────────────────────────┬───────────────────────────────────────┘    │
-│                           │ clean_question                              │
-│                           ▼                                             │
-│  ┌────────────────────────────────────────────────────────────────┐    │
-│  │  Hybrid Search (MongoDB Atlas)                                 │    │
-│  │                                                                │    │
-│  │  ┌──────────────────┐    ┌──────────────────┐                 │    │
-│  │  │  Atlas Vector    │    │  Atlas Search    │                 │    │
-│  │  │  $vectorSearch   │    │  $search (BM25)  │                 │    │
-│  │  │  ANN cosine sim  │    │  lucene.english  │                 │    │
-│  │  │  768-dim embed   │    │  fuzzy match     │                 │    │
-│  │  └────────┬─────────┘    └────────┬─────────┘                │    │
-│  │           │ rank list             │ rank list                 │    │
-│  │           └──────────┬────────────┘                           │    │
-│  │                      ▼                                         │    │
-│  │         Reciprocal Rank Fusion (RRF k=60)                      │    │
-│  │         weight: vector=0.7, text=0.3                           │    │
-│  │         → top-5 fused results                                  │    │
-│  └────────────────────────┬───────────────────────────────────────┘    │
-│                           │ search_results + vector_score               │
-│                           ▼                                             │
-│  ┌────────────────────────────────────────────────────────────────┐    │
-│  │  Confidence Threshold (default: 0.72)                         │    │
-│  │                                                                │    │
-│  │  top vector_score >= 0.72 ?                                    │    │
-│  │         │YES                       │NO                         │    │
-│  │         ▼                          ▼                           │    │
-│  │  ┌──────────────────┐   ┌──────────────────────────────┐      │    │
-│  │  │  RAG Generation  │   │  Structured Fallback          │      │    │
-│  │  │  (Gemini 1.5)    │   │  Stage 1: MySQL FULLTEXT      │      │    │
-│  │  │                  │   │   MATCH faq_entries           │      │    │
-│  │  │  System prompt   │   │  Stage 2: Token keyword scan  │      │    │
-│  │  │  + context +     │   │  Stage 3: no_answer message   │      │    │
-│  │  │  LangSmith trace │   └──────────────────────────────┘      │    │
-│  │  └──────────────────┘                                          │    │
-│  └────────────────────────────────────────────────────────────────┘    │
-│                           │                                             │
-│                           ▼                                             │
-│  ┌────────────────────────────────────────────────────────────────┐    │
-│  │  Background tasks (non-blocking)                               │    │
-│  │  • write_audit_log → MySQL audit_logs + JSONL file             │    │
-│  │  • record_metrics  → in-process counters                       │    │
-│  └────────────────────────────────────────────────────────────────┘    │
-│                           │                                             │
-│                           ▼                                             │
-│  {"answer": "...", "response_type": "rag", "confidence_score": 0.89,   │
-│   "sources": [...], "latency_ms": 340}                                  │
-└─────────────────────────────────────────────────────────────────────────┘
+        MySQL_Crawl["MySQL crawl_jobs:
+        PENDING ➔ RUNNING ➔ COMPLETED"]
 
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           DATA STORES                                   │
-│                                                                         │
-│  MongoDB Atlas (Motor async)          MySQL 8.0 (SQLAlchemy async)      │
-│  ──────────────────────────────       ──────────────────────────────    │
-│  documents collection:                crawl_jobs table                  │
-│  • _id: SHA-256 chunk_id              api_keys table                    │
-│  • content: str                       faq_entries table (FULLTEXT idx)  │
-│  • embedding: float[768]              audit_logs table                  │
-│  • url, title, chunk_index                                              │
-│  • crawl_job_id, metadata                                               │
-│                                                                         │
-│  Indexes:                                                               │
-│  • pulse_vector_index (ANN, cosine)                                     │
-│  • pulse_text_index (BM25, lucene.english)                              │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+        URL --> Crawler
+        Crawler -- "CrawledPage" --> Chunker
+        Chunker -- "DocumentChunk[]" --> Embedder
+        Embedder -- "(chunk, embedding)[]" --> MongoIngest
+    end
+    class INGESTION pipeline;
+    class Crawler,Chunker,Embedder,MongoIngest,MySQL_Crawl component;
 
----
+    %% ==========================================
+    %% QUERY PIPELINE
+    %% ==========================================
+    subgraph QUERY ["QUERY PIPELINE"]
+        API["POST /api/v1/ask  {'question': '...'}"]
+        
+        Guardrails["Guardrails
+        • Sanitise: null-byte removal, HTML escape, truncation
+        • Injection detection: 16 regex patterns
+        • Block immediately if injection detected"]
+        
+        subgraph HybridSearch ["Hybrid Search (MongoDB Atlas)"]
+            Vector["Atlas Vector
+            $vectorSearch
+            ANN cosine sim
+            768-dim embed"]
+            
+            Text["Atlas Search
+            $search (BM25)
+            lucene.english
+            fuzzy match"]
+            
+            RRF["Reciprocal Rank Fusion (RRF k=60)
+            weight: vector=0.7, text=0.3
+            ➔ top-5 fused results"]
+            
+            Vector -- "rank list" --> RRF
+            Text -- "rank list" --> RRF
+        end
 
+        subgraph ThresholdBlock ["Confidence Threshold (default: 0.72)"]
+            Decision{top vector_score >= 0.72?}
+            
+            RAG["RAG Generation
+            (Gemini 1.5)
+            System prompt + context 
+            + LangSmith trace"]
+            
+            Fallback["Structured Fallback
+            Stage 1: MySQL FULLTEXT MATCH faq_entries
+            Stage 2: Token keyword scan
+            Stage 3: no_answer message"]
+            
+            Decision -- "YES" --> RAG
+            Decision -- "NO" --> Fallback
+        end
+
+        subgraph Background ["Background tasks (non-blocking)"]
+            Tasks["• write_audit_log ➔ MySQL audit_logs + JSONL file
+            • record_metrics   ➔ in-process counters"]
+        end
+
+        Response["{'answer': '...', 'response_type': 'rag', 'confidence_score': 0.89,
+        'sources': [...], 'latency_ms': 340}"]
+
+        API --> Guardrails
+        Guardrails -- "clean_question" --> Vector
+        Guardrails -- "clean_question" --> Text
+        RRF -- "search_results + vector_score" --> Decision
+        RAG --> Tasks
+        Fallback --> Tasks
+        Tasks --> Response
+    end
+    class QUERY pipeline;
+    class API,Guardrails,Vector,Text,RRF,RAG,Fallback,Tasks,Response component;
+
+    %% ==========================================
+    %% DATA STORES
+    %% ==========================================
+    subgraph STORES ["DATA STORES"]
+        MongoStore[("MongoDB Atlas (Motor async)
+        ──────────────────────────────
+        documents collection:
+        • _id: SHA-256 chunk_id
+        • content: str
+        • embedding: float[768]
+        • url, title, chunk_index
+        • crawl_job_id, metadata
+        
+        Indexes:
+        • pulse_vector_index (ANN, cosine)
+        • pulse_text_index (BM25, lucene.english)")]
+
+        MySQLStore[("MySQL 8.0 (SQLAlchemy async)
+        ──────────────────────────────
+        crawl_jobs table
+        api_keys table
+        faq_entries table (FULLTEXT idx)
+        audit_logs table")]
+    end
+    class MongoStore,MySQLStore dataStore;
+
+    %% Cross-Pipeline DB Connections (Implicit Logic Mapping)
+    MongoIngest -.-> MongoStore
+    MySQL_Crawl -.-> MySQLStore
+    Vector -.-> MongoStore
+    Text -.-> MongoStore
+    Fallback -.-> MySQLStore
+    Tasks -.-> MySQLStore
+
+    
 ## Tech Stack
 
 | Layer | Technology |
