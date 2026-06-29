@@ -1,29 +1,50 @@
-# NexusQuery — Help Website Q&A Agent
+# NexusQuery - Help Website Q&A Agent
 
-> Production-grade RAG chatbot that answers user questions from indexed help documentation.
-> Async crawler → MongoDB Atlas hybrid search → Google Gemini generation → FastAPI.
+Production-style RAG chatbot that answers natural-language questions from indexed help documentation.
 
-
+Pipeline: async crawler -> chunking and embeddings -> MongoDB hybrid retrieval -> Gemini generation -> FastAPI API.
 
 [![CI](https://github.com/yourname/NexusQuery/actions/workflows/ci.yml/badge.svg)](https://github.com/yourname/NexusQuery/actions/workflows/ci.yml)
-[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green.svg)](https://fastapi.tiangolo.com)
-[![MongoDB](https://img.shields.io/badge/MongoDB-7.0+-brightgreen.svg)](https://www.mongodb.com)
+[![MongoDB](https://img.shields.io/badge/MongoDB-7.0%2B-brightgreen.svg)](https://www.mongodb.com)
 [![LangSmith](https://img.shields.io/badge/LangSmith-traced-orange.svg)](https://smith.langchain.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## Business Metrics
+## Interview Summary
 
-| Metric | Result | How Achieved |
-|---|---|---|
-| **Support ticket reduction** | 34% fewer tickets | RAG answers resolve common queries before escalation |
-| **API latency (retrieval)** | < 200ms P95 | Async hybrid search; audit log in background task |
-| **End-to-end latency** | < 3s P95 | Parallel vector + text search; non-blocking pipeline |
-| **Fallback coverage** | > 95% questions answered | 2-stage fallback: MySQL FULLTEXT → keyword scan |
-| **Retrieval quality** | Hit Rate@5 > 0.80 | Hybrid RRF (vector 0.7 + BM25 0.3) vs pure vector |
-| **Injection block rate** | 100% of known patterns | 16 compiled regex patterns; tested in CI |
+**NexusQuery - Help Website Q&A Agent (RAG Chatbot)**
+
+*FastAPI, LangChain, Gemini, MongoDB, MySQL, Docker, GitHub Actions, LangSmith*
+
+- Built a production-style RAG chatbot that answers natural-language questions from crawled FAQs, blogs, and help articles through a secured FastAPI `/api/v1/ask` endpoint.
+- Implemented an async `aiohttp` + BeautifulSoup crawler with bounded concurrency, robots.txt checks, retry/backoff logic, checkpoint-based resume, URL filtering, and crawl depth/page limits.
+- Designed an ingestion pipeline using LangChain text splitting, deterministic SHA-256 chunk IDs, Gemini embeddings, and MongoDB bulk upserts with source metadata for attribution.
+- Orchestrated a LangChain RAG pipeline combining MongoDB vector + text hybrid retrieval, reciprocal-rank fusion, confidence-threshold routing, Gemini answer generation, and structured FAQ/keyword fallback.
+- Hardened the API with Pydantic validation, API-key authentication, per-key sliding-window rate limiting, input sanitisation, XML-delimited grounded prompts, and prompt-injection detection.
+- Added observability with request IDs, latency tracking, health/metrics endpoints, LangSmith trace metadata, and structured MySQL + JSONL audit logs.
+- Packaged the service with Docker and GitHub Actions CI for linting, type checks, tests, coverage, and Docker build smoke testing.
+
+Note: The Dockerfile is Cloud Run-compatible through `$PORT` and non-root runtime configuration, but `.github/workflows/deploy.yml` is currently empty, so automated Cloud Run deployment is not implemented in this repository.
+
+---
+
+## What Is Implemented
+
+| Area | Implementation |
+|---|---|
+| API | FastAPI app with `/api/v1/ask`, `/api/v1/ingest`, `/api/v1/health`, and `/api/v1/metrics` |
+| Authentication | `X-API-Key` header, SHA-256 key lookup in MySQL |
+| Rate limiting | Per-key sliding-window limiter backed by in-process deques |
+| Crawler | `aiohttp`, BeautifulSoup, URL filtering, robots.txt checks, retry/backoff, checkpoint resume |
+| Ingestion | LangChain recursive text splitting, deterministic chunk IDs, Gemini embeddings |
+| Retrieval | MongoDB `$vectorSearch` plus `$text` search, fused with reciprocal-rank fusion |
+| Generation | LangChain prompt chain with Google Gemini |
+| Fallback | MySQL FAQ full-text lookup, then keyword fallback, then `no_answer` |
+| Guardrails | Input sanitisation, prompt-injection regex detection, grounded XML-delimited prompt |
+| Observability | Request IDs, latency fields, metrics snapshot, LangSmith metadata, MySQL and JSONL audit logs |
+| Packaging | Docker multi-stage build and GitHub Actions CI |
 
 ---
 
@@ -31,342 +52,270 @@
 
 ```mermaid
 flowchart TD
-    classDef ingestZone fill:#e0f2f1,stroke:#004d40,stroke-width:2px,color:#004d40
-    classDef queryZone fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#4a148c
-    classDef storeZone fill:#eceff1,stroke:#37474f,stroke-width:2px,color:#37474f
-    classDef EntryPoint fill:#29b6f6,stroke:#0288d1,stroke-width:2px,color:#fff,font-weight:bold
-    classDef GuardNode fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#e65100,font-weight:bold
-    classDef EngineCore fill:#ffffff,stroke:#00796b,stroke-width:1px,color:#004d40
-    classDef SearchCore fill:#ffffff,stroke:#7b1fa2,stroke-width:1px,color:#4a148c
-    classDef DBNode fill:#ffffff,stroke:#455a64,stroke-width:2px,color:#1a237e,font-weight:bold
-    classDef FinalOut fill:#26a69a,stroke:#00695c,stroke-width:2px,color:#fff,font-weight:bold
+    U[Help website URL] --> C[AsyncCrawler]
+    C --> P[Clean page text]
+    P --> S[Recursive text splitter]
+    S --> E[Gemini embeddings]
+    E --> M[(MongoDB documents)]
+    C --> J[(MySQL crawl_jobs)]
 
-    subgraph INGESTION ["📥 INGESTION PIPELINE"]
-        URL(["🌐 Target URL"])
-        Crawler["🕷️ AsyncCrawler — aiohttp + BS4
-        • Semaphore-bounded concurrency (10 parallel)
-        • Exponential backoff + full jitter retry
-        • robots.txt compliance + BFS depth limit
-        • JSON checkpoint every 25 pages (crash recovery)"]
-        Chunker["✂️ PageChunker — RecursiveCharacterTextSplitter
-        chunk_size=800, overlap=120
-        SHA-256 deterministic chunk IDs"]
-        Embedder["🧬 ChunkEmbedder — GoogleGenerativeAIEmbeddings
-        768-dim · Batch=50 · Retry with backoff"]
-        MongoIngest["💾 MongoDB 7.0+ Upsert
-        bulk_write keyed on chunk_id"]
-        MySQL_Crawl["📋 MySQL crawl_jobs
-        PENDING → RUNNING → COMPLETED"]
-        URL --> Crawler
-        Crawler -- "CrawledPage" --> Chunker
-        Chunker -- "DocumentChunk[]" --> Embedder
-        Embedder -- "(chunk, embedding)[]" --> MongoIngest
-        Crawler -.-> MySQL_Crawl
-    end
-
-    subgraph QUERY ["⚡ QUERY PIPELINE"]
-        API(["🚀 POST /api/v1/ask"])
-        Guardrails["🛡️ Security Guardrails
-        • Sanitise: null-byte removal, HTML escape, truncation
-        • Injection detection: 16 compiled regex patterns
-        • Block immediately if injection detected"]
-
-        subgraph HybridSearch ["🔍 Hybrid Search — MongoDB 7.0+"]
-            Vector["📐 $vectorSearch
-            ANN cosine similarity
-            768-dim embeddings
-            numCandidates=150"]
-            Text["📝 $text operator
-            BM25 full-text
-            lucene.english
-            fuzzy match"]
-            RRF["🔀 Reciprocal Rank Fusion
-            k=60 · vector=0.7 · text=0.3
-            → Top-5 fused results"]
-            Vector -- "rank list" --> RRF
-            Text -- "rank list" --> RRF
-        end
-
-        subgraph Routing ["🎯 Confidence Routing"]
-            Decision{"top vector_score ≥ 0.72?"}
-            RAG["🤖 Gemini 1.5 Flash
-            Grounded system prompt
-            XML-tagged context
-            LangSmith traced"]
-            Fallback["🪵 Structured Fallback
-            Stage 1: MySQL FULLTEXT
-            Stage 2: Keyword token scan
-            Stage 3: no_answer"]
-            Decision -- "YES" --> RAG
-            Decision -- "NO" --> Fallback
-        end
-
-        subgraph Background ["⚙️ Background Tasks (non-blocking)"]
-            Tasks["• MySQL audit_logs write
-            • JSONL file append
-            • In-process metrics update"]
-        end
-
-        Response(["📦 JSON Response
-        answer · response_type · confidence_score
-        sources · request_id · latency_ms"])
-
-        API --> Guardrails
-        Guardrails --> Vector & Text
-        RRF --> Decision
-        RAG & Fallback --> Tasks
-        Tasks --> Response
-    end
-
-    subgraph STORES ["🗄️ DATA STORES"]
-        MongoStore[("🍃 MongoDB 7.0+
-        ─────────────────────
-        documents collection
-        • _id: SHA-256 chunk_id
-        • content + embedding[768]
-        • url · title · chunk_index
-        • crawl_job_id · metadata
-        ─────────────────────
-        Indexes:
-        • NexusQuery_vector_index (ANN cosine)
-        • ix_text_search ($text, english)
-        • ix_url · ix_crawl_job_id")]
-        MySQLStore[("🐬 MySQL 8.0
-        ─────────────────────
-        crawl_jobs
-        api_keys (SHA-256 hash)
-        faq_entries (FULLTEXT)
-        audit_logs (indexed)")]
-    end
-
-    class INGESTION ingestZone
-    class QUERY queryZone
-    class STORES storeZone
-    class URL,API EntryPoint
-    class Guardrails GuardNode
-    class Crawler,Chunker,Embedder,MongoIngest,MySQL_Crawl EngineCore
-    class Vector,Text,RRF,Decision,RAG,Fallback,Tasks SearchCore
-    class MongoStore,MySQLStore DBNode
-    class Response FinalOut
-
-    MongoIngest -.-> MongoStore
-    MySQL_Crawl -.-> MySQLStore
-    Vector & Text -.-> MongoStore
-    Fallback -.-> MySQLStore
-    Tasks -.-> MySQLStore
+    Q[POST /api/v1/ask] --> A[API key auth + rate limit]
+    A --> G[Input validation + guardrails]
+    G --> QE[Query embedding]
+    QE --> V[MongoDB vector search]
+    G --> T[MongoDB text search]
+    V --> R[Reciprocal-rank fusion]
+    T --> R
+    R --> D{Confidence >= threshold?}
+    D -->|yes| L[Gemini grounded answer]
+    D -->|no| F[FAQ / keyword fallback]
+    L --> O[JSON response]
+    F --> O
+    O --> AL[(Audit logs + metrics)]
 ```
+
+---
+
+## Query Flow
+
+1. Client sends a question to `POST /api/v1/ask` with `X-API-Key`.
+2. FastAPI validates the request and enforces API-key authentication plus rate limiting.
+3. Guardrails sanitise the question and block known prompt-injection or jailbreak patterns.
+4. The pipeline embeds the question and runs MongoDB vector search and text search.
+5. Results are fused with weighted reciprocal-rank fusion.
+6. If retrieval confidence is high enough, Gemini answers using the grounded context prompt.
+7. If confidence is low, the system falls back to MySQL FAQ full-text search and keyword matching.
+8. The API returns the answer, response type, confidence score, sources, request ID, and latency.
+9. Audit logs and metrics are written in background tasks.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| **API** | FastAPI 0.111, Pydantic v2, Uvicorn + uvloop |
-| **LLM** | Google Gemini 1.5 Flash (ChatGoogleGenerativeAI) |
-| **Embeddings** | Google text-embedding-001 (768-dim) |
-| **RAG Framework** | LangChain 0.2 |
-| **Vector DB** | MongoDB Atlas Vector Search (ANN cosine) |
-| **Full-text Search** | MongoDB Atlas Search (BM25, lucene.english) |
-| **Structured DB** | MySQL 8.0 via SQLAlchemy async + aiomysql |
-| **Crawler** | aiohttp + BeautifulSoup4 + lxml |
-| **Monitoring** | LangSmith tracing + in-process Prometheus-style metrics |
-| **CI/CD** | GitHub Actions → Google Artifact Registry → Cloud Run |
-| **Containerisation** | Docker multi-stage (builder → slim runtime, ~280MB) |
-
----
-
-## Business Metrics
-
-| Metric | Target | How Achieved |
-|---|---|---|
-| **API latency** | < 1 000 ms P95 | Async end-to-end; hybrid search in parallel; audit log in background task |
-| **Fallback coverage** | > 95% questions answered | 2-stage fallback: MySQL FULLTEXT → keyword scan → no-answer |
-| **Retrieval quality** | Hit Rate@5 > 0.80 | Hybrid RRF (vector 0.7 + BM25 0.3) outperforms pure vector by ~12% on keyword queries |
-| **Injection block rate** | 100% of known patterns | 16 compiled regex patterns; tested in CI |
+| API | FastAPI, Pydantic v2, Uvicorn |
+| LLM | Google Gemini via `langchain-google-genai` |
+| Embeddings | Gemini embedding model (`models/gemini-embedding-2`, configured as 3072 dimensions) |
+| RAG Framework | LangChain |
+| Vector and text search | MongoDB vector search and `$text` search |
+| Structured DB | MySQL via SQLAlchemy async and aiomysql |
+| Crawler | aiohttp, BeautifulSoup4, lxml |
+| Monitoring | LangSmith, in-process metrics, MySQL audit table, JSONL audit files |
+| CI | GitHub Actions lint, type check, tests, coverage, Docker build smoke test |
+| Containerisation | Docker multi-stage build with non-root runtime user |
 
 ---
 
 ## Project Structure
 
-```
+```text
 NexusQuery/
-├── .github/workflows/   ci.yml · deploy.yml
-├── crawler/             async_crawler · checkpoint · url_filter · models
-├── ingestion/           chunker · embedder · vector_store (MongoDB Atlas)
-├── rag/                 pipeline · prompt_templates · guardrails · confidence · fallback
-├── api/                 main · routes/ · middleware/ · schemas · dependencies
-├── db/                  mysql_client · mongo_client · models_sql · migrations/
-├── monitoring/          langsmith_tracer · audit_log · metrics
-├── config/              settings (Pydantic BaseSettings)
-├── tests/               6 test modules, mocked I/O
-└── scripts/             crawl_and_index · eval_retrieval
+|-- .github/workflows/      ci.yml, deploy.yml placeholder
+|-- api/                    FastAPI app, routes, middleware, schemas
+|-- config/                 Pydantic settings
+|-- crawler/                async crawler, checkpoints, URL filtering, models
+|-- db/                     MongoDB and MySQL clients, SQLAlchemy models, migrations
+|-- ingestion/              chunking, embeddings, MongoDB vector store
+|-- monitoring/             audit logging, LangSmith setup, metrics
+|-- rag/                    pipeline, prompt templates, confidence, fallback, guardrails
+|-- scripts/                crawl/index and retrieval evaluation scripts
+|-- tests/                  mocked unit and API tests
+|-- Dockerfile
+|-- pyproject.toml
+|-- requirements.txt
+`-- index.html
 ```
 
 ---
 
-## Quick Start
+## Configuration
 
-### 1. Prerequisites
+The app reads settings from environment variables or `.env` via `pydantic-settings`.
 
-- Python 3.11+
-- Docker & Docker Compose
-- MongoDB Atlas account (free M0 tier works)
-- Google AI Studio API key
-- LangSmith account (optional)
+Required runtime values:
 
-### 2. Clone and configure
-
-```bash
-git clone https://github.com/yourname/NexusQuery.git
-cd NexusQuery
-cp .env.example .env
-# Edit .env — fill in GOOGLE_API_KEY, MONGODB_URI, MYSQL_PASSWORD
+```env
+GOOGLE_API_KEY=your_google_ai_key
+MONGODB_URI=mongodb+srv://user:pass@cluster.example.mongodb.net/?retryWrites=true&w=majority
+MYSQL_PASSWORD=your_mysql_password
 ```
 
-### 3. Create MongoDB Atlas indexes
+Common optional values:
 
-In Atlas UI → Search → Create Search Index:
-
-**Vector index** (name: `NexusQuery_index`):
-```json
-{
-  "fields": [{
-    "type": "vector",
-    "path": "embedding",
-    "numDimensions": 3072,
-    "similarity": "cosine"
-  }]
-}
+```env
+ENVIRONMENT=development
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=NexusQuery_user
+MYSQL_DB=NexusQuery
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=NexusQuery-webqa
+RATE_LIMIT_RPM=60
 ```
 
-**Text index** (name: `NexusQuery_index`):
+---
+
+## MongoDB Indexes
+
+The app attempts to create standard indexes and a vector search index at startup in `db/mongo_client.py`.
+
+Vector index definition:
+
 ```json
 {
-  "mappings": {
-    "dynamic": false,
-    "fields": {
-      "content": { "type": "string", "analyzer": "lucene.english" },
-      "title":   { "type": "string" }
+  "fields": [
+    {
+      "type": "vector",
+      "path": "embedding",
+      "numDimensions": 3072,
+      "similarity": "cosine"
     }
-  }
+  ]
 }
 ```
 
-### 4. Start with Docker Compose
+The text search path uses MongoDB's `$text` operator with a compound text index on `content` and `title`.
+
+---
+
+## Running Locally
+
+Install dependencies:
 
 ```bash
-docker compose up -d
-# API available at http://localhost:8080
-# MySQL auto-initialised from db/migrations/001_init.sql
+python -m pip install -r requirements.txt
 ```
 
-### 5. Crawl and index a website
+Start MySQL and MongoDB, then run:
 
 ```bash
-# Option A: via CLI script
+python -m uvicorn api.main:app --host 0.0.0.0 --port 8080
+```
+
+The API will be available at:
+
+```text
+http://localhost:8080
+```
+
+The root route serves `index.html` when present.
+
+---
+
+## Crawl And Index
+
+Via CLI:
+
+```bash
 python scripts/crawl_and_index.py \
   --url https://docs.example.com \
   --depth 3 \
   --max-pages 500 \
   --exclude /admin /login
+```
 
-# Option B: via API
+Via API:
+
+```bash
 curl -X POST http://localhost:8080/api/v1/ingest \
   -H "X-API-Key: your_key" \
   -H "Content-Type: application/json" \
-  -d '{"target_url": "https://docs.example.com", "max_depth": 3}'
+  -d "{\"target_url\":\"https://docs.example.com\",\"max_depth\":3,\"max_pages\":500}"
 ```
 
-### 6. Ask questions
+Poll job status:
+
+```bash
+curl http://localhost:8080/api/v1/ingest/<job_id> \
+  -H "X-API-Key: your_key"
+```
+
+---
+
+## Ask A Question
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/ask \
   -H "X-API-Key: your_key" \
   -H "Content-Type: application/json" \
-  -d '{"question": "How do I reset my password?"}'
+  -d "{\"question\":\"How do I reset my password?\"}"
 ```
 
-Response:
+Example response:
+
 ```json
 {
   "answer": "To reset your password, click 'Forgot password' on the login page...",
   "response_type": "rag",
   "confidence_score": 0.8923,
-  "sources": [{"url": "https://docs.example.com/account/reset", "title": ""}],
+  "sources": [
+    {
+      "url": "https://docs.example.com/account/reset",
+      "title": ""
+    }
+  ],
   "request_id": "3f8a2b1c-...",
   "latency_ms": 342
 }
 ```
 
+Response types:
+
+| Type | Meaning |
+|---|---|
+| `rag` | Gemini answered from retrieved context |
+| `faq_fallback` | MySQL FAQ full-text match |
+| `keyword_fallback` | Keyword match against FAQ entries |
+| `no_answer` | No reliable answer found |
+
 ---
 
 ## API Reference
 
-### `POST /api/v1/ask`
-
-| Field | Type | Description |
+| Method | Path | Description |
 |---|---|---|
-| `question` | string (3–1000 chars) | User's question |
-| `session_id` | string (optional) | Conversation tracking ID |
-
-**Headers:** `X-API-Key: <key>` (required)
-
-**Response fields:** `answer`, `response_type`, `confidence_score`, `sources`, `request_id`, `latency_ms`
-
-**Response types:**
-- `rag` — LLM answered from retrieved context (confidence ≥ 0.72)
-- `faq_fallback` — Matched MySQL FAQ via FULLTEXT search
-- `keyword_fallback` — Matched MySQL FAQ via keyword token scan
-- `no_answer` — Nothing matched
+| `POST` | `/api/v1/ask` | Answer a natural-language question |
+| `POST` | `/api/v1/ingest` | Start a crawl, chunk, embed, and index job |
+| `GET` | `/api/v1/ingest/{job_id}` | Read ingest job status |
+| `GET` | `/api/v1/health` | Readiness check for MySQL and MongoDB |
+| `GET` | `/api/v1/metrics` | In-process metrics snapshot |
 
 ---
 
-### `POST /api/v1/ingest`
+## Testing
 
-Triggers an async crawl + embed + index job. Returns immediately with `job_id`.
-
-### `GET /api/v1/health`
-
-Liveness + readiness. Pings MySQL and MongoDB Atlas. Returns `healthy` or `degraded`.
-
-### `GET /api/v1/metrics`
-
-In-process counters: requests_total, avg_latency_ms, fallback_rate, response_type breakdown.
-
----
-
-## Running Tests
+`requirements-dev.txt` is currently empty, so install test tooling explicitly before running tests:
 
 ```bash
-pip install -r requirements-dev.txt
-pytest tests/ -v -m "not integration"
+python -m pip install pytest pytest-asyncio pytest-cov httpx ruff mypy
+python -m pytest tests/ -m "not integration"
 ```
 
-Coverage report:
+Run coverage:
+
 ```bash
-pytest tests/ --cov=. --cov-report=html
-open htmlcov/index.html
+python -m pytest tests/ --cov=. --cov-report=term-missing
 ```
 
 ---
 
-## Evaluate Retrieval Quality
+## CI And Deployment Status
 
-```bash
-# Create a golden dataset: data/golden_qa.json
-# [{"question": "...", "expected_url": "https://..."}, ...]
+Implemented:
 
-python scripts/eval_retrieval.py \
-  --golden data/golden_qa.json \
-  --k 5 \
-  --output data/eval_results.json
-```
+- Ruff formatting and lint checks
+- mypy type check
+- pytest with coverage
+- Docker image build smoke test
 
----
+Not implemented yet:
 
-## Deploying to Cloud Run
+- `.github/workflows/deploy.yml` is empty
+- Automated push to Google Artifact Registry
+- Automated Cloud Run deployment
 
-1. Set GitHub Secrets (see `.github/workflows/deploy.yml` header)
-2. Push to `main` — CI runs first, deploy only proceeds if all checks pass
-3. Secrets are injected from Google Secret Manager at runtime (never baked into image)
+The Dockerfile is prepared for container platforms by listening on `$PORT`, using a non-root user, and exposing a health check.
 
 ---
 
@@ -374,12 +323,19 @@ python scripts/eval_retrieval.py \
 
 | Threat | Mitigation |
 |---|---|
-| Prompt injection | 16-pattern regex detection layer before query reaches LLM |
-| API abuse | Per-key sliding-window rate limiter (deque + timestamps) |
-| Auth bypass | SHA-256 key hash lookup in MySQL; raw keys never stored |
-| XSS in questions | HTML entity escaping in sanitise() |
-| Container privilege | Non-root user (uid 1001) in Dockerfile |
-| Secret leakage | Secrets injected via Cloud Run Secret Manager; `.env` in `.gitignore` |
+| Prompt injection | Guardrail regex patterns block known jailbreak and instruction-override attempts |
+| Hallucination | Grounded prompt instructs Gemini to answer only from retrieved context |
+| API abuse | Per-key sliding-window rate limiter |
+| Auth bypass | Raw API keys are hashed with SHA-256 before MySQL lookup |
+| XSS-style input | HTML-sensitive characters are escaped during sanitisation |
+| Secret leakage | Runtime configuration comes from environment variables; `.env` is ignored by git |
+| Container privilege | Docker runtime uses a non-root user |
+
+---
+
+## Performance Notes
+
+The code records retrieval, generation, and total request latency in each pipeline result and audit record. The repository does not currently include a reproducible load-test report, so this README does not claim fixed P95 latency or support-ticket impact numbers.
 
 ---
 

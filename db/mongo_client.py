@@ -71,23 +71,6 @@ async def close_mongo_client() -> None:
         logger.info("MongoDB client closed")
 
 
-# ------------------------------------------------------------------ #
-# Vector search index definition
-# (MongoDB 7.0+ community supports createSearchIndex for vectorSearch)
-# ------------------------------------------------------------------ #
-
-VECTOR_INDEX_DEFINITION: dict[str, Any] = {
-    "fields": [
-        {
-            "type": "vector",
-            "path": "embedding",
-            "numDimensions": 768,
-            "similarity": "cosine",
-        }
-    ]
-}
-
-
 async def ensure_indexes(settings: Settings | None = None) -> None:
     """
     Create all required indexes on startup. Idempotent — safe to call every boot.
@@ -100,6 +83,16 @@ async def ensure_indexes(settings: Settings | None = None) -> None:
     cfg = settings or get_settings()
     coll = get_documents_collection(cfg)
     db   = get_database(cfg)
+    vector_index_definition: dict[str, Any] = {
+        "fields": [
+            {
+                "type": "vector",
+                "path": "embedding",
+                "numDimensions": cfg.embedding_dimensions,
+                "similarity": "cosine",
+            }
+        ]
+    }
 
     # ---- 1 & 2: B-tree + text indexes -------------------------------- #
     try:
@@ -130,7 +123,7 @@ async def ensure_indexes(settings: Settings | None = None) -> None:
             indexes=[{
                 "name": cfg.atlas_vector_index,
                 "type": "vectorSearch",
-                "definition": VECTOR_INDEX_DEFINITION,
+                "definition": vector_index_definition,
             }],
         )
         logger.info("Vector search index '%s' created", cfg.atlas_vector_index)
@@ -146,7 +139,7 @@ async def ensure_indexes(settings: Settings | None = None) -> None:
                 cfg.atlas_vector_index,
                 cfg.mongodb_collection_docs,
                 cfg.atlas_vector_index,
-                VECTOR_INDEX_DEFINITION,
+                vector_index_definition,
                 exc,
             )
 
