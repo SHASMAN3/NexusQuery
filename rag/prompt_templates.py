@@ -18,7 +18,7 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 # System prompt — single-turn Q&A
 # ------------------------------------------------------------------ #
 _SYSTEM_TEMPLATE = """\
-You are Pulse, a helpful assistant that answers questions ONLY using the \
+You are NexusQuery, a helpful assistant that answers questions ONLY using the \
 provided context passages from the help documentation.
 
 Rules you must follow:
@@ -55,7 +55,7 @@ QA_PROMPT = ChatPromptTemplate.from_messages(
 # System prompt — multi-turn (with chat history)
 # ------------------------------------------------------------------ #
 _SYSTEM_MULTITURN_TEMPLATE = """\
-You are Pulse, a helpful assistant that answers questions ONLY using the \
+You are NexusQuery, a helpful assistant that answers questions ONLY using the \
 provided context passages from the help documentation.
 
 Rules you must follow:

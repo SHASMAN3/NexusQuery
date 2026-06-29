@@ -72,7 +72,7 @@ def get_langsmith_tags(response_type: str | None = None) -> list[str]:
     Tags appear as filterable labels in the LangSmith UI.
     """
     cfg = get_settings()
-    tags = [cfg.environment, "pulse-rag"]
+    tags = [cfg.environment, "NexusQuery-rag"]
     if response_type:
         tags.append(response_type)
     return tags

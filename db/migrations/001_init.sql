@@ -1,15 +1,15 @@
 -- migrations/001_init.sql
 -- ---------------------------------------------------------------------------
--- Pulse WebQA Agent — initial schema
--- Run once against an empty `pulse` database.
+-- NexusQuery WebQA Agent — initial schema
+-- Run once against an empty `NexusQuery` database.
 -- Compatible with MySQL 8.0+
 -- ---------------------------------------------------------------------------
 
-CREATE DATABASE IF NOT EXISTS pulse
+CREATE DATABASE IF NOT EXISTS NexusQuery
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
-USE pulse;
+USE NexusQuery;
 
 -- ---------------------------------------------------------------------------
 -- crawl_jobs

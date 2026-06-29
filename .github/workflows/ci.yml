@@ -19,7 +19,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
-  IMAGE_NAME: pulse-webqa-agent
+  IMAGE_NAME: NexusQuery-webqa-agent
 
 jobs:
 

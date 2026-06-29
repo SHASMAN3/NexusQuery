@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pulse — Help Q&A Agent</title>
+<title>NexusQuery — Help Q&A Agent</title>
 
 <!-- Bootstrap 5 -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -154,11 +154,11 @@
     transition: var(--transition);
   }
 
-  .status-dot.online  { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse-dot 2s infinite; }
+  .status-dot.online  { background: var(--green); box-shadow: 0 0 8px var(--green); animation: NexusQuery-dot 2s infinite; }
   .status-dot.offline { background: var(--red); }
-  .status-dot.loading { background: var(--accent); animation: pulse-dot 0.8s infinite; }
+  .status-dot.loading { background: var(--accent); animation: NexusQuery-dot 0.8s infinite; }
 
-  @keyframes pulse-dot {
+  @keyframes NexusQuery-dot {
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.4; }
   }
@@ -920,7 +920,7 @@
       <a class="brand" href="#">
         <div class="brand-icon">P</div>
         <div>
-          <div class="brand-text">Pulse</div>
+          <div class="brand-text">NexusQuery</div>
           <div class="brand-sub">Help Q&A Agent</div>
         </div>
       </a>
@@ -1203,7 +1203,7 @@ const endpointInput = $('endpointInput');
    INIT
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
-  const saved = JSON.parse(localStorage.getItem('pulse_settings') || '{}');
+  const saved = JSON.parse(localStorage.getItem('NexusQuery_settings') || '{}');
   if (saved.apiKey)    apiKeyInput.value   = saved.apiKey;
   if (saved.endpoint)  endpointInput.value = saved.endpoint;
   if (saved.sessionId) $('sessionIdInput').value = saved.sessionId;
@@ -1475,9 +1475,9 @@ function toggleHistoryPanel() {
   state.historyOpen = !state.historyOpen;
   applyHistoryCollapse(state.historyOpen);
   // persist
-  const saved = JSON.parse(localStorage.getItem('pulse_settings') || '{}');
+  const saved = JSON.parse(localStorage.getItem('NexusQuery_settings') || '{}');
   saved.historyOpen = state.historyOpen;
-  localStorage.setItem('pulse_settings', JSON.stringify(saved));
+  localStorage.setItem('NexusQuery_settings', JSON.stringify(saved));
 }
 
 function applyHistoryCollapse(open) {
@@ -1826,7 +1826,7 @@ async function copyActiveSnippet() {
    SETTINGS
    ============================================================ */
 function saveSettings() {
-  localStorage.setItem('pulse_settings', JSON.stringify({
+  localStorage.setItem('NexusQuery_settings', JSON.stringify({
     apiKey:      apiKeyInput.value,
     endpoint:    endpointInput.value,
     sessionId:   $('sessionIdInput').value,

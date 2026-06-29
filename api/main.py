@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
     """Async lifespan context — replaces deprecated on_event handlers."""
 
     # --- Startup ---
-    logger.info("Starting Pulse WebQA Agent v%s (%s)", _cfg.app_version, _cfg.environment)
+    logger.info("Starting NexusQuery WebQA Agent v%s (%s)", _cfg.app_version, _cfg.environment)
 
     # LangSmith (no-op if key not set)
     configure_langsmith()
@@ -66,14 +66,14 @@ async def lifespan(app: FastAPI):
     await ensure_indexes()
     logger.info("MongoDB indexes verified")
 
-    logger.info("Pulse startup complete — ready to serve requests")
+    logger.info("NexusQuery startup complete — ready to serve requests")
     yield
 
     # --- Shutdown ---
-    logger.info("Shutting down Pulse...")
+    logger.info("Shutting down NexusQuery...")
     await close_engine()
     await close_mongo_client()
-    logger.info("Pulse shutdown complete")
+    logger.info("NexusQuery shutdown complete")
 
 
 # ------------------------------------------------------------------ #
@@ -85,7 +85,7 @@ def create_app() -> FastAPI:
         title=_cfg.app_name,
         version=_cfg.app_version,
         description=(
-            "Pulse: Help Website Q&A Agent — "
+            "NexusQuery: Help Website Q&A Agent — "
             "RAG-powered question answering over indexed documentation."
         ),
         docs_url="/docs" if _cfg.debug else None,

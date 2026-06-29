@@ -1,5 +1,5 @@
 # =============================================================================
-# Dockerfile — Pulse WebQA Agent
+# Dockerfile — NexusQuery WebQA Agent
 # Multi-stage build: builder (compiles deps) → runtime (slim image)
 # Final image size: ~280MB
 # =============================================================================
@@ -43,8 +43,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user for security
-RUN groupadd --gid 1001 pulse \
- && useradd --uid 1001 --gid pulse --shell /bin/bash --create-home pulse
+RUN groupadd --gid 1001 NexusQuery \
+ && useradd --uid 1001 --gid NexusQuery --shell /bin/bash --create-home NexusQuery
 
 WORKDIR /app
 
@@ -52,13 +52,13 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 
 # Copy application source
-COPY --chown=pulse:pulse . .
+COPY --chown=NexusQuery:NexusQuery . .
 
 # Create runtime directories
 RUN mkdir -p data/checkpoints data/audit_logs \
- && chown -R pulse:pulse data
+ && chown -R NexusQuery:NexusQuery data
 
-USER pulse
+USER NexusQuery
 
 # Cloud Run expects the app to listen on $PORT (default 8080)
 ENV PORT=8080

@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     # Application
     # ------------------------------------------------------------------ #
-    app_name: str = "Pulse WebQA Agent"
+    app_name: str = "NexusQuery WebQA Agent"
     app_version: str = "1.0.0"
     environment: Literal["development", "staging", "production"] = "development"
     debug: bool = False
@@ -64,11 +64,11 @@ class Settings(BaseSettings):
         ...,
         description="MongoDB Atlas connection string (mongodb+srv://...)",
     )
-    mongodb_db_name: str = "pulse_db"
+    mongodb_db_name: str = "NexusQuery_db"
     mongodb_collection_docs: str = "documents"
     # Atlas Search index names — must match what you create in Atlas UI
-    atlas_vector_index: str = "pulse_vector_index"
-    atlas_search_index: str = "pulse_text_index"
+    atlas_vector_index: str = "NexusQuery_vector_index"
+    atlas_search_index: str = "NexusQuery_text_index"
     # Hybrid search weights (must sum to 1.0)
     hybrid_vector_weight: float = Field(default=0.7, ge=0.0, le=1.0)
     hybrid_text_weight: float = Field(default=0.3, ge=0.0, le=1.0)
@@ -98,9 +98,9 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     mysql_host: str = "localhost"
     mysql_port: int = 3306
-    mysql_user: str = "pulse_user"
+    mysql_user: str = "NexusQuery_user"
     mysql_password: str = Field(..., description="MySQL password")
-    mysql_db: str = "pulse"
+    mysql_db: str = "NexusQuery"
     mysql_pool_size: int = 10
     mysql_max_overflow: int = 20
     mysql_pool_timeout: int = 30
@@ -125,7 +125,7 @@ class Settings(BaseSettings):
     crawler_retry_backoff_base: float = 1.5  # exponential base
     crawler_retry_backoff_max: float = 30.0  # cap in seconds
     crawler_user_agent: str = (
-        "PulseBot/1.0 (+https://github.com/yourname/pulse)"
+        "NexusQueryBot/1.0 (+https://github.com/yourname/NexusQuery)"
     )
     crawler_checkpoint_dir: str = "data/checkpoints"
     crawler_respect_robots: bool = True
@@ -149,7 +149,7 @@ class Settings(BaseSettings):
     # LangSmith
     # ------------------------------------------------------------------ #
     langsmith_api_key: str = ""
-    langsmith_project: str = "pulse-webqa"
+    langsmith_project: str = "NexusQuery-webqa"
     langsmith_endpoint: str = "https://api.smith.langchain.com"
     langchain_tracing_v2: bool = True
 

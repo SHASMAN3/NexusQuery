@@ -140,7 +140,7 @@ async def main(args: argparse.Namespace) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Crawl a website and index it into Pulse.")
+    parser = argparse.ArgumentParser(description="Crawl a website and index it into NexusQuery.")
     parser.add_argument("--url", required=True, help="Root URL to crawl")
     parser.add_argument("--depth", type=int, default=3, help="Max crawl depth (default: 3)")
     parser.add_argument("--max-pages", type=int, default=500, help="Max pages to crawl (default: 500)")

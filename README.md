@@ -5,7 +5,7 @@
 
 
 
-[![CI](https://github.com/yourname/pulse/actions/workflows/ci.yml/badge.svg)](https://github.com/yourname/pulse/actions/workflows/ci.yml)
+[![CI](https://github.com/yourname/NexusQuery/actions/workflows/ci.yml/badge.svg)](https://github.com/yourname/NexusQuery/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green.svg)](https://fastapi.tiangolo.com)
 [![MongoDB](https://img.shields.io/badge/MongoDB-7.0+-brightgreen.svg)](https://www.mongodb.com)
@@ -128,7 +128,7 @@ flowchart TD
         • crawl_job_id · metadata
         ─────────────────────
         Indexes:
-        • pulse_vector_index (ANN cosine)
+        • NexusQuery_vector_index (ANN cosine)
         • ix_text_search ($text, english)
         • ix_url · ix_crawl_job_id")]
         MySQLStore[("🐬 MySQL 8.0

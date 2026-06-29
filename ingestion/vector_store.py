@@ -100,7 +100,7 @@ class MongoVectorStore:
     ) -> list[dict[str, Any]]:
         """
         ANN cosine similarity search using $vectorSearch.
-        Requires the 'pulse_vector_index' vectorSearch index on the embedding field.
+        Requires the 'NexusQuery_vector_index' vectorSearch index on the embedding field.
         Returns docs with a `vector_score` field (0.0–1.0).
         """
         k = top_k or self._cfg.retriever_top_k

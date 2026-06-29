@@ -123,7 +123,7 @@ async def evaluate(golden_path: str, k: int) -> dict:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Evaluate Pulse retrieval quality.")
+    parser = argparse.ArgumentParser(description="Evaluate NexusQuery retrieval quality.")
     parser.add_argument("--golden", required=True, help="Path to golden QA JSON file")
     parser.add_argument("--k", type=int, default=5, help="Top-K to evaluate (default: 5)")
     parser.add_argument("--output", help="Optional: write metrics JSON to this path")

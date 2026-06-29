@@ -1,5 +1,5 @@
 # =============================================================================
-# Pulse WebQA Agent — Production Dependencies
+# NexusQuery WebQA Agent — Production Dependencies
 # Python 3.12   |   All versions verified compatible with Python 3.12
 # =============================================================================
 
