@@ -1,4 +1,4 @@
-# Pulse — Help Website Q&A Agent
+# NexusQuery — Help Website Q&A Agent
 
 > Production-grade RAG chatbot that answers user questions from indexed help documentation.
 > Async crawler → MongoDB Atlas hybrid search → Google Gemini generation → FastAPI.
@@ -187,7 +187,7 @@ flowchart TD
 ## Project Structure
 
 ```
-pulse/
+NexusQuery/
 ├── .github/workflows/   ci.yml · deploy.yml
 ├── crawler/             async_crawler · checkpoint · url_filter · models
 ├── ingestion/           chunker · embedder · vector_store (MongoDB Atlas)
@@ -215,8 +215,8 @@ pulse/
 ### 2. Clone and configure
 
 ```bash
-git clone https://github.com/yourname/pulse.git
-cd pulse
+git clone https://github.com/yourname/NexusQuery.git
+cd NexusQuery
 cp .env.example .env
 # Edit .env — fill in GOOGLE_API_KEY, MONGODB_URI, MYSQL_PASSWORD
 ```
@@ -225,7 +225,7 @@ cp .env.example .env
 
 In Atlas UI → Search → Create Search Index:
 
-**Vector index** (name: `pulse_vector_index`):
+**Vector index** (name: `NexusQuery_index`):
 ```json
 {
   "fields": [{
@@ -237,7 +237,7 @@ In Atlas UI → Search → Create Search Index:
 }
 ```
 
-**Text index** (name: `pulse_text_index`):
+**Text index** (name: `NexusQuery_index`):
 ```json
 {
   "mappings": {
