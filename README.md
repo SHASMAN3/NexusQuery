@@ -12,24 +12,6 @@ Pipeline: async crawler -> chunking and embeddings -> MongoDB hybrid retrieval -
 
 ---
 
-## Interview Summary
-
-**NexusQuery - Help Website Q&A Agent (RAG Chatbot)**
-
-*FastAPI, LangChain, Gemini, MongoDB, MySQL, Docker, GitHub Actions, LangSmith*
-
-- Built a production-style RAG chatbot that answers natural-language questions from crawled FAQs, blogs, and help articles through a secured FastAPI `/api/v1/ask` endpoint.
-- Implemented an async `aiohttp` + BeautifulSoup crawler with bounded concurrency, robots.txt checks, retry/backoff logic, checkpoint-based resume, URL filtering, and crawl depth/page limits.
-- Designed an ingestion pipeline using LangChain text splitting, deterministic SHA-256 chunk IDs, Gemini embeddings, and MongoDB bulk upserts with source metadata for attribution.
-- Orchestrated a LangChain RAG pipeline combining MongoDB vector + text hybrid retrieval, reciprocal-rank fusion, confidence-threshold routing, Gemini answer generation, and structured FAQ/keyword fallback.
-- Hardened the API with Pydantic validation, API-key authentication, per-key sliding-window rate limiting, input sanitisation, XML-delimited grounded prompts, and prompt-injection detection.
-- Added observability with request IDs, latency tracking, health/metrics endpoints, LangSmith trace metadata, and structured MySQL + JSONL audit logs.
-- Packaged the service with Docker and GitHub Actions CI for linting, type checks, tests, coverage, and Docker build smoke testing.
-
-Note: The Dockerfile is Cloud Run-compatible through `$PORT` and non-root runtime configuration, but `.github/workflows/deploy.yml` is currently empty, so automated Cloud Run deployment is not implemented in this repository.
-
----
-
 ## What Is Implemented
 
 | Area | Implementation |
